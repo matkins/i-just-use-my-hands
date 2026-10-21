@@ -90,7 +90,9 @@ body {
 .toggle[aria-checked="true"] { background: var(--tile); }
 .toggle[aria-checked="true"]::after { left: 26px; }
 .toggle:focus-visible { outline: 3px solid var(--mustard); outline-offset: 2px; }
-.reset { display: grid; justify-items: start; gap: 6px; }
+.reset { display: grid; gap: 6px; }
+.reset .btnrow { flex-wrap: nowrap; }
+.reset .btnrow .btn { flex: 1 1 0; padding-inline: 10px; font-size: 17px; }
 .iconcol { display: flex; flex-direction: column; gap: 6px; flex: 0 0 36px; }
 .iconcol .iconbtn { flex: 0 0 36px; width: 36px; height: 36px; font-size: 16px; box-shadow: 0 3px 0 var(--ink); }
 .iconcol .iconbtn svg { width: 19px; height: 19px; }
@@ -392,7 +394,10 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><span><b>Tilt to slosh</b><small>Tilt your phone left and right to slide the mug while it brews.</small></span><button class="toggle" id="setTilt" type="button" role="switch" aria-label="Tilt to slosh"></button></li>
     </ul>
     <div class="reset">
-      <button class="btn" id="btnReset" type="button">Reset records</button>
+      <div class="btnrow">
+        <button class="btn" id="btnRecordsS" type="button">Your records</button>
+        <button class="btn" id="btnReset" type="button">Reset records</button>
+      </div>
       <p class="step-sub" id="resetNote" hidden></p>
     </div>
     <button class="btn primary" id="btnSetBack" type="button">Back</button>
@@ -2048,6 +2053,7 @@ $('btnHowGo').addEventListener('click', () => showScreen(howFrom));
 $('howList').innerHTML = document.querySelector('#scrHelp .controls-list').innerHTML;
 buildBagCards();
 $('btnRecordsR').addEventListener('click', () => showRecords('scrResult'));
+$('btnRecordsS').addEventListener('click', () => showRecords('scrSettings'));
 $('recTable').addEventListener('click', e => {
   const cell = e.target.closest('.rec-cell'); if (!cell) return;
   audioInit();

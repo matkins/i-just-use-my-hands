@@ -154,6 +154,15 @@ h1 span + span { color: var(--mustard); transform: rotate(-3deg); }
 .credit a { color: inherit; }
 h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 8vw, 40px); line-height: 1; text-wrap: balance; }
 
+.bagpick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.bp-label { flex-basis: 100%; text-align: center; font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.bp {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px 6px 8px; border: 3px solid var(--ink); border-radius: 999px;
+  background: var(--cream); font: 600 14px var(--f-body); color: var(--ink); cursor: pointer; touch-action: manipulation;
+}
+.bp svg { width: 16px; height: 16px; fill: #e9d9b4; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; }
+.bp[aria-checked="true"] { background: var(--mustard); }
+.bp:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
 .mugs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .mugcard {
   display: flex; flex-direction: column; gap: 4px; text-align: left; min-width: 0;
@@ -251,12 +260,18 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   <div class="panel">
     <p class="kicker">Step one</p>
     <h2>Pick your vessel</h2>
+    <div class="bagpick" role="radiogroup" aria-label="Tea bag shape">
+      <span class="bp-label">Tea bag</span>
+      <button type="button" class="bp" data-bag="square" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Square</button>
+      <button type="button" class="bp" data-bag="pyramid" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 20H3Z"/></svg>Pyramid</button>
+      <button type="button" class="bp" data-bag="round" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>Round</button>
+    </div>
     <div class="mugs" id="mugGrid"></div>
     <ol class="how">
       <li>Tap to drop the bag while it swings over the mug.</li>
       <li>Hold to pour, drag to aim. Pour beside the bag: a soggy bag sinks.</li>
       <li>Let it brew. The dashed zone on the steep bar is a perfect cuppa.</li>
-      <li>Swipe level with the mug to slosh it, draw circles to swirl, tap it to make the bag bob. When a dry corner pokes out, drag down from above the mug to reach in and pinch it. Touch the tea and you'll know about it.</li>
+      <li>Swipe level with the mug to slosh it, draw circles to swirl, tap it to make the bag bob. When a dry corner (or the rim of a round bag) pokes out, drag down from above the mug to reach in and pinch it. Touch the tea and you'll know about it.</li>
     </ol>
   </div>
 </section>
@@ -315,7 +330,18 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
 
 // World units; tea seconds pass TS times faster than real ones.
-const GRAV = 1800, B = 84, BR = B / Math.SQRT2, IB = B * B / 6, TS = 6;
+const GRAV = 1800, B = 104, TS = 6;
+// Tea bag shapes. Each has its pinchable points (the corners, or points round the
+// rim of a round bag) at radius R, an inertia per unit mass I, and the angle it
+// likes to float at (sym-fold), if any. Corner i sits at angle a + PI/4 + i*2PI/n,
+// so a = PI/4 puts corner 0 straight up.
+const BAGS = {
+  square: { name: 'Square', n: 4, R: B / Math.SQRT2, I: B * B / 6, sym: 4, rest: 0 },
+  pyramid: { name: 'Pyramid', n: 3, R: B * 0.72, I: (B * 0.72) ** 2 / 4, sym: 3, rest: Math.PI / 4 },
+  round: { name: 'Round', n: 16, R: B * 0.56, I: (B * 0.56) ** 2 / 2, sym: 0, rest: 0, round: true },
+};
+let bagShape = 'square';
+try { if (BAGS[localStorage.getItem('ijumh-bag')]) bagShape = localStorage.getItem('ijumh-bag'); } catch (e) {}
 const KY = 14, CY = 4.5, KA = 7, CA = 2.6;
 
 const MUGS = [
@@ -414,7 +440,7 @@ function newState(m, phase) {
     ox: 0, oxV: 0, oxT: 0, oxA: 0,
     pain: 0, burns: 0, spills: 0, spillVol: 0, spilling: false, spillT: 0, misses: 0,
     milk: false, milkT: -9, milkAt: 0, milkStart: null, spoonT: 0, puddleWarned: false, steamAcc: 0, flash: 0, shake: 0,
-    bag: { x: 0, y: 0, a: Math.PI / 4, vx: 0, vy: 0, w: 0, soak: 0, f: 0, state: 'held', seed: Math.random() * 10, settle: 0, inT: 0, tableT: 0, attach: 0, phi: 0, phiV: 0 },
+    bag: { sh: BAGS[bagShape], x: 0, y: 0, a: Math.PI / 4, vx: 0, vy: 0, w: 0, soak: 0, f: 0, state: 'held', seed: Math.random() * 10, settle: 0, inT: 0, tableT: 0, attach: 0, phi: 0, phiV: 0 },
     hand: { ph: rand(0, 6), x: 0, tipH: m.D + 210, up: 0, pz: 1 },
     kettle: { aim: null, p: 0, holding: false, pid: null, leave: 0 },
     finger: null, drag: null, parts: [], pops: [], puddles: [],
@@ -442,7 +468,8 @@ function milkMix() { return G.milk ? clamp((G.t - G.milkT) / 1.5, 0, 1) : 0; }
 
 function corners(b) {
   const o = [];
-  for (let i = 0; i < 4; i++) { const t = b.a + Math.PI / 4 + i * Math.PI / 2; o.push({ rx: BR * Math.cos(t), ry: BR * Math.sin(t) }); }
+  const { n, R } = b.sh;
+  for (let i = 0; i < n; i++) { const t = b.a + Math.PI / 4 + i * Math.PI * 2 / n; o.push({ rx: R * Math.cos(t), ry: R * Math.sin(t) }); }
   return o;
 }
 function extent(b) {
@@ -451,10 +478,17 @@ function extent(b) {
   return { top, bot, half };
 }
 function distToBag(px, ph) {
-  const b = G.bag, dx = px - b.x, dy = ph - b.y, ca = Math.cos(b.a), sa = Math.sin(b.a);
-  const lx = dx * ca + dy * sa, ly = -dx * sa + dy * ca;
-  const qx = Math.abs(lx) - B / 2, qy = Math.abs(ly) - B / 2;
-  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0);
+  const b = G.bag, dx = px - b.x, dy = ph - b.y;
+  if (b.sh.round) return Math.hypot(dx, dy) - b.sh.R;
+  const cs = corners(b);
+  let d = 1e9, inside = true;
+  cs.forEach((c, i) => {
+    const e = cs[(i + 1) % cs.length], ex = e.rx - c.rx, ey = e.ry - c.ry, qx = dx - c.rx, qy = dy - c.ry;
+    const t = clamp((qx * ex + qy * ey) / (ex * ex + ey * ey), 0, 1);
+    d = Math.min(d, Math.hypot(qx - ex * t, qy - ey * t));
+    if (ex * qy - ey * qx < 0) inside = false;
+  });
+  return inside ? -d : d;
 }
 function exposure() {
   const b = G.bag; let best = -1e9;
@@ -511,7 +545,7 @@ function contact(b, rx, ry, nx, ny, e, mu) {
   const vn = vcx * nx + vcy * ny;
   if (vn >= 0) return;
   const rn = rx * ny - ry * nx;
-  const j = -(1 + e) * vn / (1 + rn * rn / IB);
+  const IB = b.sh.I, j = -(1 + e) * vn / (1 + rn * rn / IB);
   b.vx += j * nx; b.vy += j * ny; b.w += rn * j / IB;
   const tx = -ny, ty = nx;
   const vt = (b.vx - b.w * ry) * tx + (b.vy + b.w * rx) * ty;
@@ -530,11 +564,12 @@ function stepBag(dt) {
   b.f = f;
   if (f > 0.02) {
     // A dry bag rides high; once soaked it hovers just under the surface.
-    const yT = surf(b.x) - B / 2 - lerp(-0.45 * B, 0.1 * B, b.soak);
+    const yT = surf(b.x) - (top - bot) / 2 - lerp(-0.45 * B, 0.1 * B, b.soak);
     b.vy += (KY * (yT - b.y) - CY * b.vy) * dt;
     const u = G.sv * m.W * 0.35;
     b.vx += (u - b.vx) * Math.min(1, 2.5 * f * dt) + Math.sin(G.t * 0.7 + b.seed) * 8 * dt * f;
-    b.w += (-KA * Math.sin(4 * (b.a - Math.atan(G.s))) - CA * b.w) * f * dt;
+    const sh = b.sh, settle = sh.sym ? -KA * Math.sin(sh.sym * (b.a - sh.rest - Math.atan(G.s))) : 0;
+    b.w += (settle - CA * b.w) * f * dt;
   } else {
     b.vy -= GRAV * dt;
     b.w *= Math.exp(-dt * 0.5);
@@ -587,7 +622,7 @@ function updateDrop(dt) {
 
   if (b.state === 'held') {
     b.a = Math.PI / 4 - hvx * 0.0006;
-    b.x = h.x; b.y = h.tipH + h.up - BR; b.vx = hvx; b.vy = 0; b.w = 0;
+    b.x = h.x; b.y = h.tipH + h.up - b.sh.R; b.vx = hvx; b.vy = 0; b.w = 0;
   } else if (b.state === 'falling') {
     b.vy -= GRAV * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
     const ex = extent(b);
@@ -610,7 +645,7 @@ function updateDrop(dt) {
     if (Math.abs(b.x) < minX && b.y + ex.bot < m.D) { const sg = Math.sign(b.x) || 1; b.x = sg * minX; b.vx = sg * Math.abs(b.vx) * 0.4; }
     const hC = -(m.base + (m.saucer ? 14 : 0));
     if (b.y + ex.bot <= hC) {
-      b.a = 0; b.y = hC + B / 2; b.state = 'table'; b.vx = b.vy = b.w = 0; b.tableT = G.t;
+      b.a = b.sh.rest; b.y = hC - extent(b).bot; b.state = 'table'; b.vx = b.vy = b.w = 0; b.tableT = G.t;
       G.misses++; sfx.plop(); pop(pick(['Missed!', 'On the counter!', 'Splat.']), TOMATO, 38);
     }
   } else if (b.state === 'table') {
@@ -716,7 +751,7 @@ function grab() {
   const F = G.finger, b = G.bag, cs = corners(b);
   let bi = 0, bd = 1e9;
   cs.forEach((c, i) => { const d = Math.hypot(b.x + c.rx - F.x, b.y + c.ry - F.h); if (d < bd) { bd = d; bi = i; } });
-  b.attach = bi; b.phi = b.a + Math.PI / 4 + bi * Math.PI / 2; b.phiV = b.w * 0.5; b.state = 'lifted';
+  b.attach = bi; b.phi = b.a + Math.PI / 4 + bi * Math.PI * 2 / b.sh.n; b.phiV = b.w * 0.5; b.state = 'lifted';
   F.x = b.x + cs[bi].rx; F.h = b.y + cs[bi].ry + 6; F.grabbed = true; F.liftV = 120;
   sfx.pinch();
   pop(pick(['Got it!', 'Pinched!', 'Yoink!']), MUSTARD, 42);
@@ -730,9 +765,9 @@ function liftStep(dt) {
   F.x += (m.W * 0.1 - F.x) * dt * 0.8;
   b.phiV += (28 * Math.cos(b.phi) - 3 * b.phiV) * dt;
   b.phi += b.phiV * dt;
-  b.a = b.phi - Math.PI / 4 - b.attach * Math.PI / 2;
-  b.x = F.x - BR * Math.cos(b.phi);
-  b.y = (F.h - 6) - BR * Math.sin(b.phi);
+  b.a = b.phi - Math.PI / 4 - b.attach * Math.PI * 2 / b.sh.n;
+  b.x = F.x - b.sh.R * Math.cos(b.phi);
+  b.y = (F.h - 6) - b.sh.R * Math.sin(b.phi);
   if (b.y < m.D + 300 && G.t > G.nextDrip) {
     G.nextDrip = G.t + rand(0.05, 0.14);
     let lc = null; for (const c of corners(b)) if (!lc || c.ry < lc.ry) lc = c;
@@ -827,7 +862,12 @@ function update(dt) {
   }
   if (G.milkAt && G.t >= G.milkAt) { G.milkAt = 0; if (!G.done) pourMilk(); }
   // The spoon slides in and scoops under the bag before lifting it out.
-  if (b.state === 'spoon' && G.t - G.spoonT > SPOON_IN) { b.y += 300 * dt; b.a *= Math.exp(-dt * 4); }
+  if (b.state === 'spoon' && G.t - G.spoonT > SPOON_IN) {
+    // Settle the bag onto its flat side as it rides up on the spoon.
+    const sh = b.sh, per = sh.sym ? Math.PI * 2 / sh.sym : 0;
+    const d = per ? ((b.a - sh.rest) % per + per * 1.5) % per - per / 2 : 0;
+    b.y += 300 * dt; b.a = sh.rest + d * Math.exp(-dt * 4);
+  }
 
   stepFinger(dt);
 
@@ -980,20 +1020,33 @@ function drawCavity(m, cx, fy) {
   ctx.fillRect(ix, iy, m.W, m.D);
 }
 
+function bagPath(sh, k) {
+  ctx.beginPath();
+  if (sh.round) { ctx.arc(0, 0, sh.R * k, 0, Math.PI * 2); return; }
+  if (sh.n === 4) { const s = B / 2 * k; ctx.roundRect(-s, -s, 2 * s, 2 * s, 6); return; }
+  for (let i = 0; i < sh.n; i++) {
+    const t = Math.PI / 4 + i * Math.PI * 2 / sh.n, x = sh.R * k * Math.cos(t), y = -sh.R * k * Math.sin(t);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+}
 function drawBag(b) {
-  const x = GE.cx + b.x, y = GE.fy - b.y, s = B / 2, wet = clamp(b.soak, 0, 1);
+  const x = GE.cx + b.x, y = GE.fy - b.y, wet = clamp(b.soak, 0, 1), sh = b.sh;
   ctx.save(); ctx.translate(x, y); ctx.rotate(-b.a);
   const paper = [lerp(241, 172, wet * 0.85), lerp(233, 122, wet * 0.85), lerp(214, 72, wet * 0.85)].map(v => v | 0);
-  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-s, -s, B, B, 6) : ctx.rect(-s, -s, B, B);
+  ctx.lineJoin = 'round';
+  bagPath(sh, 1);
   ctx.fillStyle = `rgb(${paper})`; ctx.fill();
   ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.save(); ctx.clip();
   ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(42,22,13,.35)';
-  ctx.strokeRect(-s + 7, -s + 7, B - 14, B - 14); ctx.setLineDash([]);
+  bagPath(sh, sh.n === 3 ? 0.72 : 0.84); ctx.stroke(); ctx.setLineDash([]);
   ctx.fillStyle = `rgb(${lerp(110, 58, wet) | 0},${lerp(70, 32, wet) | 0},${lerp(36, 14, wet) | 0})`;
   for (const l of LEAVES) { ctx.beginPath(); ctx.ellipse(l[0], l[1], l[2], l[2] * 0.6, l[3], 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
+  ctx.restore();
 }
-const LEAVES = Array.from({ length: 26 }, () => [rand(-B / 2 + 14, B / 2 - 14), rand(-B / 2 + 14, B / 2 - 14), rand(2, 4), rand(0, 3)]);
+const LEAVES = Array.from({ length: 34 }, () => [rand(-B * 0.42, B * 0.42), rand(-B * 0.42, B * 0.42), rand(2, 4), rand(0, 3)]);
 
 const ease = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
 const CARTON_SCALE = 1.9;
@@ -1028,7 +1081,7 @@ const SPOON_IN = 0.45, SPOON_ANG = -0.22;
 // running nearly in line with the bowl. It slides in from the right, dips under
 // the bag and lifts it out.
 function drawSpoon(b) {
-  const k = G.t - G.spoonT, bx = GE.cx + b.x, by = GE.fy - b.y + B / 2 + 6;
+  const k = G.t - G.spoonT, bx = GE.cx + b.x, by = GE.fy - b.y - extent(b).bot + 6;
   const ax = GE.cx + G.mug.W * 0.1, ay = GE.rimY - 50;
   let x = bx, y = by;
   if (k < 0.25) { const e = ease(k / 0.25); x = lerp(WW + 60, ax, e); y = ay; }
@@ -1471,6 +1524,7 @@ function showResults() {
     ['Tea temp', `${Math.round(G.Tgrab)}°C when grabbed`],
     ['Fingers', pain ? `${pain}% scorched · ${G.burns} dip${G.burns === 1 ? '' : 's'}` : 'Untouched'],
     ['Spills', String(G.spills)],
+    ['Tea bag', G.bag.sh.name],
     ['Milk', G.milk ? 'In with the bag' : 'None'],
   ];
   $('rStats').innerHTML = '';
@@ -1505,6 +1559,14 @@ function drawPreview(cnv, m) {
     c.beginPath(); c.moveTo(sx, sy); c.bezierCurveTo(sx - 14, sy - 20, sx + 14, sy - 36, sx, sy - 56); c.stroke();
   }
 }
+function syncBagPick() {
+  document.querySelectorAll('.bp').forEach(b => b.setAttribute('aria-checked', String(b.dataset.bag === bagShape)));
+}
+document.querySelectorAll('.bp').forEach(btn => btn.addEventListener('click', () => {
+  bagShape = btn.dataset.bag; syncBagPick();
+  try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
+}));
+syncBagPick();
 function buildMugCards() {
   const grid = $('mugGrid');
   grid.innerHTML = '';

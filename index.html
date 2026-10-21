@@ -444,7 +444,7 @@ function newState(m, phase) {
     hand: { ph: rand(0, 6), x: 0, tipH: m.D + 210, up: 0, pz: 1 },
     kettle: { aim: null, p: 0, holding: false, pid: null, leave: 0 },
     finger: null, drag: null, parts: [], pops: [], puddles: [],
-    bubbleT: rand(5, 9), nextDrip: 0, hintUntil: 0, guideUp: 0, guideLow: 0,
+    bubbleT: rand(5, 9), nextDrip: 0, hintUntil: 0, tapHeat: 0, rattleT: -9, guideUp: 0, guideLow: 0,
     done: false, result: null, endAt: 0, shown: false, Tgrab: 0, Lgrab: 0, grabTea: 0,
   };
 }
@@ -715,6 +715,8 @@ function stepFinger(dt) {
   for (let i = 0; i < n; i++) { F.x += dx / n; F.h += dh / n; if (checkFinger()) return; }
 }
 
+// How far a corner must be clear of the tea before it can be pinched.
+const GRAB_EXPOSE = 9;
 function checkFinger() {
   const F = G.finger, m = G.mug, b = G.bag, rf = 12;
   if (F.h < m.D + rf) F.x = clamp(F.x, -m.W / 2 + rf, m.W / 2 - rf);
@@ -723,7 +725,7 @@ function checkFinger() {
   const hs = G.L > 0.5 ? surf(F.x) : -1e9;
   if (b.state === 'mug' && distToBag(F.x, F.h) <= rf) {
     const under = F.h < hs + 2;
-    if (tf < 0.15 || (exposure() >= 5 && !under)) { grab(); return true; }
+    if (tf < 0.15 || (exposure() >= GRAB_EXPOSE && !under)) { grab(); return true; }
     if (!under && G.t - F.slipT > 0.6) { F.slipT = G.t; pop(pick(['Too slippery!', 'Not enough corner!', 'It sank!']), PAPER, 28); b.vy -= 120; }
   }
   const sub = hs - (F.h - rf * 0.6);
@@ -775,11 +777,16 @@ function liftStep(dt) {
   }
 }
 
+// Repeated taps tire fast: each one adds to tapHeat (which drains at about 1.4 a
+// second) and bobs the bag less, so mashing the mug can't hold a corner up. It
+// does churn the surface, which can wash over a corner.
 function tapMug() {
-  const b = G.bag;
+  const b = G.bag, kick = Math.max(0, 1 - G.tapHeat * 0.4);
+  G.tapHeat += 1;
   sfx.tap();
-  G.ripA = Math.min(6, G.ripA + 3);
-  if (b.state === 'mug' && b.f > 0.02) { b.vy += 45 * b.f + 15; b.w += rand(-2, 2); }
+  G.ripA = Math.min(7, G.ripA + 3 + G.tapHeat * 0.6);
+  if (b.state === 'mug' && b.f > 0.02) { b.vy += (45 * b.f + 15) * kick; b.w += rand(-2, 2) * kick; }
+  if (G.tapHeat > 3.5 && G.t - G.rattleT > 3) { G.rattleT = G.t; pop(pick(['Stop rattling it!', 'Easy, easy.', 'It’s a mug, not a drum.']), PAPER, 28); }
   pop('tink', CREAM, 22, GE.cx + rand(-60, 60), GE.rimY - 20);
 }
 function spin(ang) {
@@ -837,6 +844,7 @@ function update(dt) {
     G.e += (1 - G.e) * dT / 200 * clamp((G.T - 20) / 75, 0, 1.1) * fb;
   }
 
+  G.tapHeat = Math.max(0, G.tapHeat - dt * 1.4);
   const brewing = G.phase === 'steep' && !G.done, gk = 1 - Math.exp(-dt * 6);
   G.guideUp += ((brewing && !G.reached ? 1 : 0) - G.guideUp) * gk;
   G.guideLow += ((brewing && !G.sloshed ? 1 : 0) - G.guideLow) * gk;
@@ -1041,12 +1049,14 @@ function drawBag(b) {
   ctx.save(); ctx.clip();
   ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(42,22,13,.35)';
   bagPath(sh, sh.n === 3 ? 0.72 : 0.84); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle = `rgb(${lerp(110, 58, wet) | 0},${lerp(70, 32, wet) | 0},${lerp(36, 14, wet) | 0})`;
+  const leaf = [lerp(110, 58, wet) | 0, lerp(70, 32, wet) | 0, lerp(36, 14, wet) | 0];
+  ctx.fillStyle = `rgba(${leaf},.22)`; ctx.fillRect(-B, -B, 2 * B, 2 * B);
+  ctx.fillStyle = `rgb(${leaf})`;
   for (const l of LEAVES) { ctx.beginPath(); ctx.ellipse(l[0], l[1], l[2], l[2] * 0.6, l[3], 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
   ctx.restore();
 }
-const LEAVES = Array.from({ length: 34 }, () => [rand(-B * 0.42, B * 0.42), rand(-B * 0.42, B * 0.42), rand(2, 4), rand(0, 3)]);
+const LEAVES = Array.from({ length: 95 }, () => [rand(-B * 0.46, B * 0.46), rand(-B * 0.46, B * 0.46), rand(2, 4.4), rand(0, 3)]);
 
 const ease = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
 const CARTON_SCALE = 1.9;
@@ -1086,7 +1096,12 @@ function drawSpoon(b) {
   let x = bx, y = by;
   if (k < 0.25) { const e = ease(k / 0.25); x = lerp(WW + 60, ax, e); y = ay; }
   else if (k < SPOON_IN) { const e = ease((k - 0.25) / (SPOON_IN - 0.25)); x = lerp(ax, bx, e); y = lerp(ay, by, e); }
-  ctx.save(); ctx.translate(x, y); ctx.rotate(SPOON_ANG);
+  // Keep the bowl inside the mug, and tip the handle up just enough to clear the
+  // far rim rather than pass through the wall.
+  const m = G.mug, inL = GE.cx - m.W / 2 + 56, rimX = GE.cx + m.W / 2 + m.wall + 6, rimY = GE.rimY - 8;
+  if (k >= 0.25 && y > GE.rimY - 20) x = clamp(x, inL, GE.cx + m.W / 2 - 60);
+  const clear = rimX > x + 20 ? Math.atan2(rimY - y, rimX - x) - 0.04 : SPOON_ANG;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(clamp(Math.min(SPOON_ANG, clear), -1.15, SPOON_ANG));
   const metal = ctx.createLinearGradient(0, -12, 0, 26);
   metal.addColorStop(0, '#f4f7f9'); metal.addColorStop(0.55, '#c3cbd1'); metal.addColorStop(1, '#8e9aa3');
   ctx.lineJoin = 'round'; ctx.strokeStyle = INK; ctx.lineWidth = 3.5;

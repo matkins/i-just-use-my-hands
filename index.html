@@ -383,6 +383,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <p class="step-sub" id="resetNote" hidden></p>
     </div>
     <button class="btn primary" id="btnSetBack" type="button">Back</button>
+    <button class="btn" id="btnQuit" type="button" hidden>Change mug or bag</button>
   </div>
 </section>
 
@@ -1965,7 +1966,8 @@ function openSettings(from) {
   settingsFrom = from;
   syncSettings();
   $('btnSetBack').textContent = from === 'game' ? 'Back to the tea' : 'Back';
-  $('resetNote').hidden = true; resetArmed = false; $('btnReset').textContent = 'Reset records'; $('btnReset').classList.remove('warn');
+  $('btnQuit').hidden = from !== 'game'; disarm($('btnQuit'), 'Change mug or bag');
+  $('resetNote').hidden = true; disarm($('btnReset'), 'Reset records');
   if (from === 'game') { pauseGame(); $('scrSettings').hidden = false; } else showScreen('scrSettings');
 }
 const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} };
@@ -1981,19 +1983,24 @@ $('setTilt').addEventListener('click', () => {
   savePref('ijumh-tilt', TILT.on); syncSettings();
   if (TILT.on) { TILT.asked = false; requestMotion(); }
 });
-let resetArmed = false, resetTimer = 0;
+// Buttons that need a second tap within three seconds before they act.
+const armed = new Map();
+function disarm(btn, label) { clearTimeout(armed.get(btn)); armed.delete(btn); btn.textContent = label; btn.classList.remove('warn'); }
+function confirmTap(btn, label, warning) {
+  if (armed.has(btn)) { disarm(btn, label); return true; }
+  btn.textContent = warning; btn.classList.add('warn');
+  armed.set(btn, setTimeout(() => disarm(btn, label), 3000));
+  return false;
+}
+$('btnQuit').addEventListener('click', () => {
+  if (!confirmTap($('btnQuit'), 'Change mug or bag', 'Tap again to abandon this brew')) return;
+  $('scrSettings').hidden = true;
+  goMugs();
+});
 $('btnReset').addEventListener('click', () => {
-  const btn = $('btnReset');
-  if (!resetArmed) {
-    resetArmed = true; btn.textContent = 'Tap again to delete all records'; btn.classList.add('warn');
-    clearTimeout(resetTimer);
-    resetTimer = setTimeout(() => { resetArmed = false; btn.textContent = 'Reset records'; btn.classList.remove('warn'); }, 3000);
-    return;
-  }
-  clearTimeout(resetTimer); resetArmed = false;
+  if (!confirmTap($('btnReset'), 'Reset records', 'Tap again to delete all records')) return;
   try { localStorage.removeItem('ijumh-best'); } catch (e) {}
   refreshBests();
-  btn.textContent = 'Reset records'; btn.classList.remove('warn');
   $('resetNote').textContent = 'All records cleared.'; $('resetNote').hidden = false;
 });
 $('btnSettings').addEventListener('click', () => { if (G.phase !== 'demo') openSettings('game'); });

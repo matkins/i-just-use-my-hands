@@ -80,7 +80,17 @@ body {
   background: var(--paper); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink);
   font: 18px var(--f-display); color: var(--ink); cursor: pointer; padding: 0;
 }
-.iconbtn[aria-pressed="false"] { text-decoration: line-through; opacity: .75; }
+.iconbtn svg { width: 22px; height: 22px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.settings { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.settings li { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 2px dashed rgba(42,22,13,.2); }
+.settings b { display: block; font: 18px var(--f-display); font-weight: 400; }
+.settings small { display: block; font-size: 13px; line-height: 1.35; color: var(--dim); margin-top: 2px; }
+.toggle { flex: 0 0 auto; width: 58px; height: 32px; border-radius: 999px; border: 3px solid var(--ink); background: rgba(42,22,13,.15); position: relative; cursor: pointer; padding: 0; touch-action: manipulation; }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--cream); border: 2px solid var(--ink); transition: left .15s; }
+.toggle[aria-checked="true"] { background: var(--tile); }
+.toggle[aria-checked="true"]::after { left: 26px; }
+.toggle:focus-visible { outline: 3px solid var(--mustard); outline-offset: 2px; }
+.reset { display: grid; justify-items: start; gap: 6px; }
 .iconcol { display: flex; flex-direction: column; gap: 8px; flex: 0 0 40px; }
 .iconcol .iconbtn { flex: 0 0 40px; width: 40px; height: 40px; }
 .controls-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
@@ -260,7 +270,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   </div>
   <div class="iconcol">
     <button class="iconbtn" id="btnHelp" aria-label="How to play">?</button>
-    <button class="iconbtn" id="btnMute" aria-label="Sound" aria-pressed="true">♪</button>
+    <button class="iconbtn" id="btnSettings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7z"/><circle cx="12" cy="12" r="3.4"/></svg></button>
   </div>
 </div>
 
@@ -281,6 +291,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <div class="linkrow">
       <button class="link" id="btnHowT" type="button">How to play</button>
       <button class="link" id="btnRecordsT" type="button">Your records</button>
+      <button class="link" id="btnSettingsT" type="button">Settings</button>
     </div>
   </div>
 </section>
@@ -333,7 +344,6 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
-    <button class="link" id="btnTilt" type="button" aria-pressed="true">Tilt to slosh: on</button>
     <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
   </div>
 </section>
@@ -356,6 +366,23 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <button class="link" id="btnRecordsR" type="button">Your records</button>
     </div>
     <textarea id="copyBox" rows="3" readonly hidden></textarea>
+  </div>
+</section>
+
+<section class="screen veil" id="scrSettings" hidden>
+  <div class="panel">
+    <p class="kicker">Preferences</p>
+    <h2>Settings</h2>
+    <ul class="settings">
+      <li><span><b>Sound</b><small>Sizzles, pours, plops and yelps.</small></span><button class="toggle" id="setSound" type="button" role="switch" aria-label="Sound"></button></li>
+      <li><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Android only, and it needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
+      <li><span><b>Tilt to slosh</b><small>Tilt your phone left and right to slide the mug while it brews.</small></span><button class="toggle" id="setTilt" type="button" role="switch" aria-label="Tilt to slosh"></button></li>
+    </ul>
+    <div class="reset">
+      <button class="btn" id="btnReset" type="button">Reset records</button>
+      <p class="step-sub" id="resetNote" hidden></p>
+    </div>
+    <button class="btn primary" id="btnSetBack" type="button">Back</button>
   </div>
 </section>
 
@@ -490,7 +517,9 @@ const sfx = {
 // Short buzzes like these count as touch feedback on Android, so they need the
 // phone's touch vibration setting on. Only Android browsers support this;
 // iPhones ignore it.
-function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+let vibOn = true;
+try { vibOn = localStorage.getItem('ijumh-vib') !== '0'; } catch (e) {}
+function vibrate(ms) { if (!vibOn) return; try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 
 // Tilt. While brewing, tilting the phone left or right (from however you were
 // holding it when brewing started) slides the mug that way and sloshes the tea.
@@ -1571,7 +1600,7 @@ function startGame(m) {
 }
 // The way into a game: pick a mug, then a bag, and go. The in-game hints teach
 // the controls; How to play is one tap away on the title and bag screens.
-const SCREENS = ['scrTitle', 'scrMugs', 'scrBags', 'scrHow', 'scrResult', 'scrRecords'];
+const SCREENS = ['scrTitle', 'scrMugs', 'scrBags', 'scrHow', 'scrResult', 'scrRecords', 'scrSettings'];
 function showScreen(id) { SCREENS.forEach(k => $(k).hidden = k !== id); }
 let chosenMug = MUGS[0], howFrom = 'scrTitle';
 function goMugs() {
@@ -1853,21 +1882,17 @@ addEventListener('keyup', e => { if (G && (e.key === 'ArrowLeft' || e.key === 'A
 $('btnStart').addEventListener('click', () => { audioInit(); goMugs(); });
 $('btnDone').addEventListener('click', () => { if (G.phase === 'pour' && G.L >= G.mug.D * 0.2) { G.kettle.holding = false; setPhase('steep'); } });
 $('btnMilk').addEventListener('click', addMilk);
-$('btnHelp').addEventListener('click', () => {
-  if (G.phase === 'demo') return;
+function pauseGame() {
   G.paused = true; sfx.pour(0);
   if (G.kettle) G.kettle.holding = false;
   if (G.finger && G.finger.active) { G.finger.active = false; G.finger.pid = null; }
   G.drag = null; G.oxT = 0;
+}
+$('btnHelp').addEventListener('click', () => {
+  if (G.phase === 'demo') return;
+  pauseGame();
   $('scrHelp').hidden = false;
 });
-function syncTilt() { $('btnTilt').textContent = `Tilt to slosh: ${TILT.on ? 'on' : 'off'}`; $('btnTilt').setAttribute('aria-pressed', String(TILT.on)); }
-$('btnTilt').addEventListener('click', () => {
-  TILT.on = !TILT.on; TILT.off = 0; TILT.g0 = null; syncTilt();
-  try { localStorage.setItem('ijumh-tilt', TILT.on ? '1' : '0'); } catch (e) {}
-  if (TILT.on) { TILT.asked = false; requestMotion(); }
-});
-syncTilt();
 $('btnResume').addEventListener('click', () => { G.paused = false; $('scrHelp').hidden = true; });
 $('btnSpoon').addEventListener('click', () => {
   if (G.phase !== 'steep') return;
@@ -1928,15 +1953,55 @@ $('btnCopy').addEventListener('click', () => {
     navigator.clipboard.writeText(lastShare).then(() => { $('btnCopy').textContent = 'Copied'; }, fallback);
   } catch (err) { fallback(); }
 });
-function syncMute() { $('btnMute').setAttribute('aria-pressed', String(!AU.muted)); }
-$('btnMute').addEventListener('click', () => {
+// Settings: sound, vibration and tilt switches, plus resetting records. Opened
+// from the title, or mid-game from the gear in the HUD (which pauses play).
+let settingsFrom = 'scrTitle';
+function syncSettings() {
+  $('setSound').setAttribute('aria-checked', String(!AU.muted));
+  $('setVib').setAttribute('aria-checked', String(vibOn));
+  $('setTilt').setAttribute('aria-checked', String(TILT.on));
+}
+function openSettings(from) {
+  settingsFrom = from;
+  syncSettings();
+  $('btnSetBack').textContent = from === 'game' ? 'Back to the tea' : 'Back';
+  $('resetNote').hidden = true; resetArmed = false; $('btnReset').textContent = 'Reset records'; $('btnReset').classList.remove('warn');
+  if (from === 'game') { pauseGame(); $('scrSettings').hidden = false; } else showScreen('scrSettings');
+}
+const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} };
+$('setSound').addEventListener('click', () => {
   audioInit();
   AU.muted = !AU.muted;
   if (AU.master) AU.master.gain.value = AU.muted ? 0 : 0.9;
-  try { localStorage.setItem('ijumh-muted', AU.muted ? '1' : '0'); } catch (e) {}
-  syncMute();
+  savePref('ijumh-muted', AU.muted); syncSettings();
 });
-syncMute();
+$('setVib').addEventListener('click', () => { vibOn = !vibOn; savePref('ijumh-vib', vibOn); syncSettings(); vibrate(30); });
+$('setTilt').addEventListener('click', () => {
+  TILT.on = !TILT.on; TILT.off = 0; TILT.g0 = null;
+  savePref('ijumh-tilt', TILT.on); syncSettings();
+  if (TILT.on) { TILT.asked = false; requestMotion(); }
+});
+let resetArmed = false, resetTimer = 0;
+$('btnReset').addEventListener('click', () => {
+  const btn = $('btnReset');
+  if (!resetArmed) {
+    resetArmed = true; btn.textContent = 'Tap again to delete all records'; btn.classList.add('warn');
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => { resetArmed = false; btn.textContent = 'Reset records'; btn.classList.remove('warn'); }, 3000);
+    return;
+  }
+  clearTimeout(resetTimer); resetArmed = false;
+  try { localStorage.removeItem('ijumh-best'); } catch (e) {}
+  refreshBests();
+  btn.textContent = 'Reset records'; btn.classList.remove('warn');
+  $('resetNote').textContent = 'All records cleared.'; $('resetNote').hidden = false;
+});
+$('btnSettings').addEventListener('click', () => { if (G.phase !== 'demo') openSettings('game'); });
+$('btnSettingsT').addEventListener('click', () => openSettings('scrTitle'));
+$('btnSetBack').addEventListener('click', () => {
+  if (settingsFrom === 'game') { G.paused = false; $('scrSettings').hidden = true; } else showScreen(settingsFrom);
+});
+syncSettings();
 
 /* ---------------- boot ---------------- */
 buildMugCards();

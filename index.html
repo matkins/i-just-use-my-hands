@@ -108,7 +108,13 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   pointer-events: none;
 }
-.controls .btn { pointer-events: auto; }
+.controls .btn, .controls .quiet { pointer-events: auto; }
+.quiet {
+  align-self: center; background: rgba(42,22,13,.12); border: 0; border-radius: 999px; padding: 7px 13px;
+  font: 600 13px var(--f-body); color: rgba(42,22,13,.75); cursor: pointer; touch-action: manipulation;
+}
+.quiet.warn { background: var(--tomato); color: var(--cream); }
+.quiet:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
 
 .btn {
   font-family: var(--f-display); font-size: 19px; line-height: 1.1; color: var(--ink);
@@ -280,7 +286,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 <div class="hint" id="hint" hidden></div>
 
 <div class="controls" id="controls" hidden>
-  <button class="btn" id="btnChange" hidden>Change mug or bag</button>
+  <button class="quiet" id="btnChange" hidden>Change mug or bag</button>
   <button class="btn primary" id="btnDone" hidden>That'll do</button>
   <button class="btn" id="btnMilk" hidden>Add milk</button>
   <button class="btn" id="btnSpoon" hidden>Use a spoon</button>

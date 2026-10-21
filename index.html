@@ -334,8 +334,6 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
     <button class="link" id="btnTilt" type="button" aria-pressed="true">Tilt to slosh: on</button>
-    <button class="link" id="btnVib" type="button">Test vibration</button>
-    <p class="step-sub" id="vibNote" hidden></p>
     <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
   </div>
 </section>
@@ -1870,16 +1868,6 @@ $('btnTilt').addEventListener('click', () => {
   if (TILT.on) { TILT.asked = false; requestMotion(); }
 });
 syncTilt();
-$('btnVib').addEventListener('click', () => {
-  let msg;
-  if (!('vibrate' in navigator)) msg = 'This browser can’t vibrate. iPhones never can from a web page.';
-  else {
-    let ok = false; try { ok = navigator.vibrate([200, 100, 200]); } catch (e) {}
-    msg = ok ? 'Buzzing now. If you felt nothing, turn on Touch vibration (sometimes called touch feedback) in your phone’s vibration settings, and check Do Not Disturb is off.'
-      : 'Your browser refused to vibrate.';
-  }
-  $('vibNote').textContent = msg; $('vibNote').hidden = false;
-});
 $('btnResume').addEventListener('click', () => { G.paused = false; $('scrHelp').hidden = true; });
 $('btnSpoon').addEventListener('click', () => {
   if (G.phase !== 'steep') return;

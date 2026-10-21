@@ -154,12 +154,15 @@ h1 span + span { color: var(--mustard); transform: rotate(-3deg); }
 .credit a { color: inherit; }
 h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 8vw, 40px); line-height: 1; text-wrap: balance; }
 
-.bagpick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.bagpick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; }
 .bp-label { flex-basis: 100%; text-align: center; font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
 .bp {
-  display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px 6px 8px; border: 3px solid var(--ink); border-radius: 999px;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 8px 7px; border: 3px solid var(--ink); border-radius: 16px;
   background: var(--cream); font: 600 14px var(--f-body); color: var(--ink); cursor: pointer; touch-action: manipulation;
 }
+.bp-top { display: inline-flex; align-items: center; gap: 5px; }
+.bp .mdiff { align-self: center; font-size: 9.5px; padding: 1px 7px; border-width: 1.5px; }
+.bp .d-hard { background: var(--tomato); color: var(--cream); }
 .bp svg { width: 16px; height: 16px; fill: #e9d9b4; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; }
 .bp[aria-checked="true"] { background: var(--mustard); }
 .bp:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
@@ -203,6 +206,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .rec { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
 .rec th { font: 800 11px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 2px; }
 .rec th.mug { text-align: left; font: 15px var(--f-display); letter-spacing: 0; text-transform: none; color: var(--ink); width: 30%; }
+.rec .rec-diff { display: block; font-size: 9.5px; letter-spacing: .08em; font-weight: 700; opacity: .75; }
 .rec td { background: var(--cream); border: 2px solid var(--ink); border-radius: 10px; padding: 6px 4px; text-align: center; vertical-align: middle; }
 .rec td.none { background: transparent; border-style: dashed; border-color: rgba(42,22,13,.3); color: rgba(42,22,13,.4); }
 .rec td.top { background: var(--mustard); }
@@ -272,9 +276,9 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <h2>Pick your vessel</h2>
     <div class="bagpick" role="radiogroup" aria-label="Tea bag shape">
       <span class="bp-label">Tea bag</span>
-      <button type="button" class="bp" data-bag="square" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Square</button>
-      <button type="button" class="bp" data-bag="pyramid" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 20H3Z"/></svg>Pyramid</button>
-      <button type="button" class="bp" data-bag="round" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>Round</button>
+      <button type="button" class="bp" data-bag="pyramid" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 20H3Z"/></svg>Pyramid</span><span class="mdiff d-easy">Easy</span></button>
+      <button type="button" class="bp" data-bag="square" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Square</span><span class="mdiff d-normal">Normal</span></button>
+      <button type="button" class="bp" data-bag="round" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>Round</span><span class="mdiff d-hard">Hard</span></button>
     </div>
     <div class="mugs" id="mugGrid"></div>
     <button class="link" id="btnRecords" type="button">Your records</button>
@@ -353,14 +357,15 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 
 // World units; tea seconds pass TS times faster than real ones.
 const GRAV = 1800, B = 104, TS = 6;
-// Tea bag shapes. Each has its pinchable points (the corners, or points round the
+// Tea bag shapes, easiest first: a pyramid floats point-up, a square floats flat,
+// and a round bag has no corners at all. Each has its pinchable points (the corners, or points round the
 // rim of a round bag) at radius R, an inertia per unit mass I, and the angle it
 // likes to float at (sym-fold), if any. Corner i sits at angle a + PI/4 + i*2PI/n,
 // so a = PI/4 puts corner 0 straight up.
 const BAGS = {
-  square: { id: 'square', name: 'Square', n: 4, R: B / Math.SQRT2, I: B * B / 6, sym: 4, rest: 0 },
-  pyramid: { id: 'pyramid', name: 'Pyramid', n: 3, R: B * 0.72, I: (B * 0.72) ** 2 / 4, sym: 3, rest: Math.PI / 4 },
-  round: { id: 'round', name: 'Round', n: 16, R: B * 0.56, I: (B * 0.56) ** 2 / 2, sym: 0, rest: 0, round: true },
+  pyramid: { id: 'pyramid', name: 'Pyramid', diff: 'Easy', n: 3, R: B * 0.72, I: (B * 0.72) ** 2 / 4, sym: 3, rest: Math.PI / 4 },
+  square: { id: 'square', name: 'Square', diff: 'Normal', n: 4, R: B / Math.SQRT2, I: B * B / 6, sym: 4, rest: 0 },
+  round: { id: 'round', name: 'Round', diff: 'Hard', n: 16, R: B * 0.56, I: (B * 0.56) ** 2 / 2, sym: 0, rest: 0, round: true },
 };
 let bagShape = 'square';
 try { if (BAGS[localStorage.getItem('ijumh-bag')]) bagShape = localStorage.getItem('ijumh-bag'); } catch (e) {}
@@ -1773,7 +1778,7 @@ function showRecords(from) {
   let top = null, n = 0;
   for (const m of MUGS) for (const sh of shapes) { const r = bests[bestKey(m.id, sh.id)]; if (r) { n++; if (!top || r.score > top.score) top = r; } }
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  $('recTable').innerHTML = `<thead><tr><th></th>${shapes.map(sh => `<th scope="col">${sh.name}</th>`).join('')}</tr></thead><tbody>` +
+  $('recTable').innerHTML = `<thead><tr><th></th>${shapes.map(sh => `<th scope="col">${sh.name}<span class="rec-diff">${sh.diff}</span></th>`).join('')}</tr></thead><tbody>` +
     MUGS.map(m => `<tr><th scope="row" class="mug">${m.name}</th>${shapes.map(sh => {
       const r = bests[bestKey(m.id, sh.id)];
       return r ? `<td class="${r === top ? 'top' : ''}"><span class="sc">${r.score}</span><span class="tt">${esc(r.title)}</span></td>` : '<td class="none" aria-label="No record yet">–</td>';

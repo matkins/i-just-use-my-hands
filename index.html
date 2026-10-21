@@ -96,11 +96,6 @@ body {
 .iconcol .iconbtn svg { width: 19px; height: 19px; }
 .iconbtn.warn { background: var(--tomato); }
 .iconbtn.warn svg { stroke: var(--cream); }
-.quit-tip {
-  position: fixed; z-index: 6; margin: 0; transform: translateY(-50%); white-space: nowrap;
-  background: var(--tomato); color: var(--cream); border: 3px solid var(--ink); border-radius: 12px;
-  padding: 7px 12px; font-weight: 700; font-size: 14px; pointer-events: none;
-}
 .controls-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
 .controls-list li { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: baseline; font-size: 15px; line-height: 1.4; }
 .controls-list b { font-family: var(--f-display); font-weight: 400; font-size: 16px; }
@@ -260,7 +255,6 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 
 <canvas id="c" aria-label="A mug of tea in a kitchen"></canvas>
 
-<p class="quit-tip" id="quitTip" hidden>Tap again to change mug or bag</p>
 <div class="hud" id="hud" hidden>
   <div class="chip brew">
     <div class="row"><span class="lab">Steep</span><span class="val" id="vTime">0:00</span></div>
@@ -278,15 +272,15 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <span class="sub" id="vPain">Pristine</span>
   </div>
   <div class="iconcol">
-    <button class="iconbtn" id="btnHelp" aria-label="How to play">?</button>
     <button class="iconbtn" id="btnSettings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6 1.7.7 2.2-1.5 2.4 2.4-1.5 2.2.7 1.7 2.6.5v3.4l-2.6.5-.7 1.7 1.5 2.2-2.4 2.4-2.2-1.5-1.7.7-.5 2.6h-3.4l-.5-2.6-1.7-.7-2.2 1.5-2.4-2.4 1.5-2.2-.7-1.7L2 13.7v-3.4l2.6-.5.7-1.7-1.5-2.2 2.4-2.4 2.2 1.5 1.7-.7z"/><circle cx="12" cy="12" r="3.4"/></svg></button>
-    <button class="iconbtn" id="btnQuit" aria-label="Change mug or bag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></svg></button>
+    <button class="iconbtn" id="btnHelp" aria-label="How to play">?</button>
   </div>
 </div>
 
 <div class="hint" id="hint" hidden></div>
 
 <div class="controls" id="controls" hidden>
+  <button class="btn" id="btnChange" hidden>Change mug or bag</button>
   <button class="btn primary" id="btnDone" hidden>That'll do</button>
   <button class="btn" id="btnMilk" hidden>Add milk</button>
   <button class="btn" id="btnSpoon" hidden>Use a spoon</button>
@@ -1581,6 +1575,8 @@ function setPhaseUI() {
   $('hud').hidden = ph === 'demo';
   $('controls').hidden = ph === 'demo';
   $('btnDone').hidden = ph !== 'pour';
+  $('btnChange').hidden = ph !== 'drop' && ph !== 'pour';
+  disarm($('btnChange'), 'Change mug or bag');
   $('btnMilk').hidden = ph !== 'steep' || G.milk;
   $('btnSpoon').hidden = ph !== 'steep';
   spoonArmed = false; $('btnSpoon').textContent = 'Use a spoon'; $('btnSpoon').classList.remove('warn');
@@ -2000,21 +1996,10 @@ function confirmTap(btn, label, warning) {
   armed.set(btn, setTimeout(() => disarm(btn, label), 3000));
   return false;
 }
-// Leaving a game: the exit button in the HUD needs a second tap within three
-// seconds, with a tip under it saying so.
-let quitTimer = 0;
-function disarmQuit() { clearTimeout(quitTimer); quitTimer = 0; $('btnQuit').classList.remove('warn'); $('quitTip').hidden = true; }
-$('btnQuit').addEventListener('click', () => {
-  if (G.phase === 'demo') return;
-  if (!quitTimer) {
-    const r = $('btnQuit').getBoundingClientRect();
-    $('quitTip').style.top = `${Math.round(r.top + r.height / 2)}px`;
-    $('quitTip').style.right = `${Math.round(innerWidth - r.left + 8)}px`;
-    $('quitTip').hidden = false; $('btnQuit').classList.add('warn');
-    quitTimer = setTimeout(disarmQuit, 3000);
-    return;
-  }
-  disarmQuit();
+// Leaving before the brew starts: a bottom button during the drop and pour,
+// needing a second tap. Once it's brewing, the spoon is the way out.
+$('btnChange').addEventListener('click', () => {
+  if (!confirmTap($('btnChange'), 'Change mug or bag', 'Really? Tap again')) return;
   goMugs();
 });
 $('btnReset').addEventListener('click', () => {

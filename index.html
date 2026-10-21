@@ -109,6 +109,8 @@ body {
   pointer-events: none;
 }
 .controls .btn, .controls .quiet { pointer-events: auto; }
+/* Sits on its own line under the main buttons. */
+.controls .quiet { order: 2; margin: 0 calc(50% - 90px); }
 .quiet {
   align-self: center; background: rgba(42,22,13,.12); border: 0; border-radius: 999px; padding: 7px 13px;
   font: 600 13px var(--f-body); color: rgba(42,22,13,.75); cursor: pointer; touch-action: manipulation;
@@ -384,8 +386,9 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <p class="kicker">Preferences</p>
     <h2>Settings</h2>
     <ul class="settings">
-      <li><span><b>Sound</b><small>Sizzles, pours, plops and yelps.</small></span><button class="toggle" id="setSound" type="button" role="switch" aria-label="Sound"></button></li>
-      <li><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Android only, and it needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
+      <li><span><b>Music</b><small>A gentle tune in the background.</small></span><button class="toggle" id="setMusic" type="button" role="switch" aria-label="Music"></button></li>
+      <li><span><b>Sound effects</b><small>Sizzles, pours, plops and yelps.</small></span><button class="toggle" id="setSound" type="button" role="switch" aria-label="Sound effects"></button></li>
+      <li id="rowVib" hidden><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
       <li><span><b>Tilt to slosh</b><small>Tilt your phone left and right to slide the mug while it brews.</small></span><button class="toggle" id="setTilt" type="button" role="switch" aria-label="Tilt to slosh"></button></li>
     </ul>
     <div class="reset">
@@ -472,8 +475,8 @@ function shade(hex, amt) {
 }
 
 /* ---------------- audio ---------------- */
-const AU = { ctx: null, master: null, pourG: null, pourF: null, noise: null, muted: false };
-try { AU.muted = localStorage.getItem('ijumh-muted') === '1'; } catch (e) {}
+const AU = { ctx: null, master: null, pourG: null, pourF: null, noise: null, muted: false, music: true, musicBus: null };
+try { AU.muted = localStorage.getItem('ijumh-muted') === '1'; AU.music = localStorage.getItem('ijumh-music') !== '0'; } catch (e) {}
 function audioInit() {
   if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -489,7 +492,79 @@ function audioInit() {
     const g = c.createGain(); g.gain.value = 0;
     src.connect(f); f.connect(g); g.connect(AU.master); src.start();
     AU.pourG = g; AU.pourF = f;
+    startMusic();
   } catch (e) { AU.ctx = null; }
+}
+
+// Background music, made on the fly: a bright, bouncy loop at 96 bpm over
+// F, C, Dm, Bb. A soft pad holds the chord, a round bass plays on beats one and
+// three, a light arpeggio ripples on the off-beats, and a little melody steps up
+// and down the F major pentatonic. It has its own volume, separate from the
+// sound effects.
+const MUSIC = {
+  bpm: 96, vol: 0.075, timer: 0, next: 0, bar: 0, mel: 3,
+  chords: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]],
+  scale: [65, 67, 69, 72, 74, 77, 79, 81, 84],
+};
+const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
+function startMusic() {
+  const c = AU.ctx; if (!c || AU.musicBus) return;
+  const bus = c.createGain(), lp = c.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = 0.4;
+  bus.gain.value = AU.music ? MUSIC.vol : 0;
+  bus.connect(lp); lp.connect(c.destination);
+  AU.musicBus = bus;
+  MUSIC.next = c.currentTime + 0.3;
+  MUSIC.timer = setInterval(scheduleMusic, 250);
+  scheduleMusic();
+}
+function setMusic(on) {
+  AU.music = on;
+  if (AU.musicBus) AU.musicBus.gain.setTargetAtTime(on ? MUSIC.vol : 0, AU.ctx.currentTime, 0.4);
+}
+function padNote(n, t, len) {
+  const c = AU.ctx, g = c.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.11, t + len * 0.15);
+  g.gain.setValueAtTime(0.11, t + len * 0.7);
+  g.gain.linearRampToValueAtTime(0, t + len * 1.05);
+  for (const det of [-5, 5]) {
+    const o = c.createOscillator();
+    o.type = 'triangle'; o.frequency.value = midiHz(n); o.detune.value = det;
+    o.connect(g); o.start(t); o.stop(t + len * 1.1);
+  }
+  g.connect(AU.musicBus);
+}
+function pluck(n, t, vol = 0.3, len = 0.9, type = 'triangle') {
+  const c = AU.ctx, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = midiHz(n);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.001, t + len);
+  o.connect(g); g.connect(AU.musicBus); o.start(t); o.stop(t + len + 0.05);
+}
+function scheduleMusic() {
+  const c = AU.ctx; if (!c || c.state !== 'running') return;
+  const beat = 60 / MUSIC.bpm, barLen = beat * 4;
+  // Skip ahead rather than pile up notes after the tab was in the background.
+  if (MUSIC.next < c.currentTime - 0.1) MUSIC.next = c.currentTime + 0.1;
+  while (MUSIC.next < c.currentTime + 1.5) {
+    const t = MUSIC.next, ch = MUSIC.chords[MUSIC.bar % 4];
+    if (!AU.music) { MUSIC.next += barLen; MUSIC.bar++; continue; }
+    ch.forEach(n => padNote(n, t, barLen));
+    // Bass on one and three, bouncing up an octave on three.
+    pluck(ch[0] - 12, t, 0.45, beat * 1.6, 'sine');
+    pluck(ch[0], t + beat * 2, 0.32, beat * 1.4, 'sine');
+    // Arpeggio on the off-beats.
+    for (let k = 0; k < 4; k++) pluck(ch[k % 3] + 12, t + (k + 0.5) * beat, 0.09, beat * 0.8);
+    // Melody: mostly steps to a neighbouring note, landing on most beats and
+    // some half-beats, resting now and then.
+    for (let h = 0; h < 8; h++) {
+      if (Math.random() > (h % 2 ? 0.3 : 0.75)) continue;
+      MUSIC.mel = clamp(MUSIC.mel + pick([-1, -1, 1, 1, 1, 2, -2, 0]), 0, MUSIC.scale.length - 1);
+      pluck(MUSIC.scale[MUSIC.mel], t + h * beat / 2, 0.26, beat * 1.1);
+    }
+    MUSIC.next += barLen; MUSIC.bar++;
+  }
 }
 function tone(f0, dur, type, vol, f1) {
   const c = AU.ctx; if (!c) return;
@@ -915,7 +990,7 @@ function tapMug() {
 }
 function spin(ang) {
   const b = G.bag;
-  if (b.state === 'mug') b.w = clamp(b.w - ang * 1.5 * (b.f > 0.02 ? 1 : 0.3), -20, 20);
+  if (b.state === 'mug') b.w = clamp(b.w - ang * 2.8 * (b.f > 0.02 ? 1 : 0.3), -20, 20);
   G.sv += ang * 0.04;
 }
 
@@ -1114,7 +1189,7 @@ function drawMugBody(c, m, cx, fy, cut) {
     c.fillStyle = m.trim; c.fillRect(L, T + 12, BW, 12); c.fillRect(L, Bt - 30, BW, 8);
     if (!cut) {
       c.fillStyle = INK; c.font = `22px ${DISPLAY}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText("WORLD'S", cx, T + m.D * 0.42); c.fillText('OKAYEST', cx, T + m.D * 0.42 + 26); c.fillText('BREW', cx, T + m.D * 0.42 + 52);
+      c.fillText('TRUMAN', cx, T + m.D * 0.45); c.fillText('CUP-O-TEA', cx, T + m.D * 0.45 + 28);
     }
   } else if (m.id === 'teacup') {
     c.fillStyle = '#d7a93a'; c.fillRect(L, T, BW, 6);
@@ -1302,7 +1377,7 @@ const HAND_PINCH = [5600, 33900], HAND_K = 0.0068, HAND_RES = 3, HAND_ROT = -0.5
 const HAND_CUT = [[9600, 17800], [11340, 19570], [12200, 20500], [10400, 25000], [11100, 27600], [10000, 30250], [6000, 34500], [4500, 40000], [-1000, 40000], [-1000, 10000], [9600, 10000]];
 // The pivot sits where the cut crosses the back of the finger, so the outline
 // there bends like a knuckle instead of stepping.
-const HAND_PIVOT = [11340, 19570], HAND_OPEN = 0.077, HAND_SHUT = -0.18;
+const HAND_PIVOT = [11340, 19570], HAND_OPEN = 0, HAND_SHUT = -0.18;
 function buildHandSprites() {
   const vw = 48600, vh = 38400, k = HAND_K * HAND_RES;
   const w = Math.ceil(vw * k), h = Math.ceil(vh * k);
@@ -1345,8 +1420,10 @@ function buildHandSprites() {
     cc.drawImage(mask, 0, 0);
     return c;
   };
-  // A strip of plain skin just inside the crease fills the joint as the finger opens.
-  const rest = split(base, false), joint = tint(SKIN), jc = joint.getContext('2d');
+  // A strip of the original drawing just inside the crease fills the joint as the
+  // finger closes, outline and all.
+  const rest = split(base, false), joint = mk(), jc = joint.getContext('2d');
+  jc.drawImage(base, 0, 0);
   const crease = HAND_CUT.slice(1, 5), strip = new Path2D();
   [...crease, ...crease.map(([x, y]) => [x - 1600, y]).reverse()].forEach(([x, y], i) => i ? strip.lineTo(x, y) : strip.moveTo(x, y));
   jc.globalCompositeOperation = 'destination-in'; jc.scale(k, k); jc.fill(strip);
@@ -1364,13 +1441,16 @@ function drawHand(tx, ty, pinch, red) {
   const piece = (img, alpha) => { ctx.globalAlpha = alpha; ctx.drawImage(img, ox, oy, img.width / HAND_RES, img.height / HAND_RES); };
   const burnA = red > 0 ? 0.25 + red * 0.6 : 0;
   ctx.save(); ctx.translate(tx, ty); ctx.rotate(HAND_ROT);
-  piece(HAND.rest, 1);
-  if (burnA) piece(HAND.restBurn, burnA);
+  // The finger goes underneath, so the hand's own outline runs unbroken over the joint.
   ctx.save(); ctx.translate(px, py); ctx.rotate(lerp(HAND_OPEN, HAND_SHUT, pinch)); ctx.translate(-px, -py);
   piece(HAND.finger, 1);
   if (burnA) piece(HAND.fingerBurn, burnA);
   ctx.restore();
+  piece(HAND.rest, 1);
+  if (burnA) piece(HAND.restBurn, burnA);
   ctx.globalAlpha = 1;
+  // Seal the point where the two outlines meet.
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(px - 4.5, py + 3.9, 1.8, 0, Math.PI * 2); ctx.fill();
   ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + 1500, ay);
   ctx.strokeStyle = INK; ctx.lineWidth = 107; ctx.stroke();
@@ -1842,7 +1922,7 @@ cv.addEventListener('pointerdown', e => {
     noteReach();
     return;
   }
-  G.drag = { pid: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), v: null };
+  G.drag = { pid: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, ax: e.clientX, ay: e.clientY, t0: performance.now(), v: null, turn: 0 };
 });
 cv.addEventListener('pointermove', e => {
   if (!G) return;
@@ -1855,11 +1935,18 @@ cv.addEventListener('pointermove', e => {
   }
   const d = G.drag;
   if (d && d.pid === e.pointerId) {
-    const dx = e.clientX - d.x, dy = e.clientY - d.y, l = Math.hypot(dx, dy);
-    G.oxT = clamp(G.oxT + dx / S, -80, 80);
-    if (d.v && l > 1.5) spin(Math.atan2(d.v.x * dy - d.v.y * dx, d.v.x * dx + d.v.y * dy));
+    const dx = e.clientX - d.x;
+    // Once the finger is clearly going round, the sideways part of each circle
+    // barely moves the mug, so it doesn't fight the spin.
+    G.oxT = clamp(G.oxT + dx / S * (Math.abs(d.turn) > 2.5 ? 0.25 : 1), -80, 80);
+    // Measure turning over steps of 12 px or more, not every tiny move, so a
+    // hand-drawn circle reads as a clean turn.
+    const sx = e.clientX - d.ax, sy = e.clientY - d.ay;
+    if (Math.hypot(sx, sy) >= 12) {
+      if (d.v) { const ang = Math.atan2(d.v.x * sy - d.v.y * sx, d.v.x * sx + d.v.y * sy); spin(ang); d.turn = d.turn * 0.85 + ang; }
+      d.v = { x: sx, y: sy }; d.ax = e.clientX; d.ay = e.clientY;
+    }
     if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 40) noteSlosh();
-    if (l > 1.5) d.v = { x: dx, y: dy };
     d.x = e.clientX; d.y = e.clientY;
   }
 });
@@ -1969,6 +2056,7 @@ $('btnCopy').addEventListener('click', () => {
 // from the title, or mid-game from the gear in the HUD (which pauses play).
 let settingsFrom = 'scrTitle';
 function syncSettings() {
+  $('setMusic').setAttribute('aria-checked', String(AU.music));
   $('setSound').setAttribute('aria-checked', String(!AU.muted));
   $('setVib').setAttribute('aria-checked', String(vibOn));
   $('setTilt').setAttribute('aria-checked', String(TILT.on));
@@ -1981,6 +2069,12 @@ function openSettings(from) {
   if (from === 'game') { pauseGame(); $('scrSettings').hidden = false; } else showScreen('scrSettings');
 }
 const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} };
+// Only Android browsers can vibrate, so only they get the switch.
+$('rowVib').hidden = !('vibrate' in navigator && /Android/i.test(navigator.userAgent));
+$('setMusic').addEventListener('click', () => {
+  audioInit();
+  setMusic(!AU.music); savePref('ijumh-music', AU.music); syncSettings();
+});
 $('setSound').addEventListener('click', () => {
   audioInit();
   AU.muted = !AU.muted;
@@ -2020,6 +2114,12 @@ $('btnSetBack').addEventListener('click', () => {
   if (settingsFrom === 'game') { G.paused = false; $('scrSettings').hidden = true; } else showScreen(settingsFrom);
 });
 syncSettings();
+
+// Go quiet while the game is in the background.
+document.addEventListener('visibilitychange', () => {
+  if (!AU.ctx) return;
+  if (document.hidden) AU.ctx.suspend(); else AU.ctx.resume();
+});
 
 /* ---------------- boot ---------------- */
 buildMugCards();

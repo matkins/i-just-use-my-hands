@@ -1377,7 +1377,7 @@ const HAND_PINCH = [5600, 33900], HAND_K = 0.0068, HAND_RES = 3, HAND_ROT = -0.5
 const HAND_CUT = [[9600, 17800], [11340, 19570], [12200, 20500], [10400, 25000], [11100, 27600], [10000, 30250], [6000, 34500], [4500, 40000], [-1000, 40000], [-1000, 10000], [9600, 10000]];
 // The pivot sits where the cut crosses the back of the finger, so the outline
 // there bends like a knuckle instead of stepping.
-const HAND_PIVOT = [11340, 19570], HAND_OPEN = 0.077, HAND_SHUT = -0.18;
+const HAND_PIVOT = [11340, 19570], HAND_OPEN = 0, HAND_SHUT = -0.18;
 function buildHandSprites() {
   const vw = 48600, vh = 38400, k = HAND_K * HAND_RES;
   const w = Math.ceil(vw * k), h = Math.ceil(vh * k);
@@ -1420,8 +1420,10 @@ function buildHandSprites() {
     cc.drawImage(mask, 0, 0);
     return c;
   };
-  // A strip of plain skin just inside the crease fills the joint as the finger opens.
-  const rest = split(base, false), joint = tint(SKIN), jc = joint.getContext('2d');
+  // A strip of the original drawing just inside the crease fills the joint as the
+  // finger closes, outline and all.
+  const rest = split(base, false), joint = mk(), jc = joint.getContext('2d');
+  jc.drawImage(base, 0, 0);
   const crease = HAND_CUT.slice(1, 5), strip = new Path2D();
   [...crease, ...crease.map(([x, y]) => [x - 1600, y]).reverse()].forEach(([x, y], i) => i ? strip.lineTo(x, y) : strip.moveTo(x, y));
   jc.globalCompositeOperation = 'destination-in'; jc.scale(k, k); jc.fill(strip);
@@ -1439,13 +1441,16 @@ function drawHand(tx, ty, pinch, red) {
   const piece = (img, alpha) => { ctx.globalAlpha = alpha; ctx.drawImage(img, ox, oy, img.width / HAND_RES, img.height / HAND_RES); };
   const burnA = red > 0 ? 0.25 + red * 0.6 : 0;
   ctx.save(); ctx.translate(tx, ty); ctx.rotate(HAND_ROT);
-  piece(HAND.rest, 1);
-  if (burnA) piece(HAND.restBurn, burnA);
+  // The finger goes underneath, so the hand's own outline runs unbroken over the joint.
   ctx.save(); ctx.translate(px, py); ctx.rotate(lerp(HAND_OPEN, HAND_SHUT, pinch)); ctx.translate(-px, -py);
   piece(HAND.finger, 1);
   if (burnA) piece(HAND.fingerBurn, burnA);
   ctx.restore();
+  piece(HAND.rest, 1);
+  if (burnA) piece(HAND.restBurn, burnA);
   ctx.globalAlpha = 1;
+  // Seal the point where the two outlines meet.
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(px - 4.5, py + 3.9, 1.8, 0, Math.PI * 2); ctx.fill();
   ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + 1500, ay);
   ctx.strokeStyle = INK; ctx.lineWidth = 107; ctx.stroke();

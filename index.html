@@ -1344,7 +1344,7 @@ function drawKettle() {
   const tl = { x: -131 * KETTLE_SCALE, y: -25 * KETTLE_SCALE };
   const tr = { x: tl.x * Math.cos(th) - tl.y * Math.sin(th), y: tl.x * Math.sin(th) + tl.y * Math.cos(th) };
   const aim = K.aim ?? GE.cx;
-  const bx = aim - tr.x, by = GE.rimY - 250 - K.leave * 1400;
+  const bx = aim - tr.x, by = GE.rimY - 205 - K.leave * 1400;
   if (G.phase === 'pour' && K.p > 0.04) {
     const xr = aim - GE.cx, m = G.mug, sx = aim, sy = by + tr.y;
     let ey;
@@ -1547,7 +1547,10 @@ function setPhaseUI() {
 }
 function measureHud() {
   if (!G) return;
-  G.hudBottom = $('hud').getBoundingClientRect().bottom / S;
+  const hr = $('hud').getBoundingClientRect();
+  G.hudBottom = hr.bottom / S;
+  // Hang the hint banner just below the HUD, wherever the status bar has put it.
+  if (hr.height) $('hint').style.top = `${Math.round(hr.bottom + 12)}px`;
   const r = $('btnSpoon').getBoundingClientRect();
   G.ctrlTop = (r.height ? r.top : CH) / S;
 }

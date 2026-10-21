@@ -1038,25 +1038,45 @@ function bagPath(sh, k) {
   }
   ctx.closePath();
 }
+// Like a real bag: thin, slightly see-through paper with a pale crimped seal
+// round the edge, and the inside packed solid with tea crumbs showing through.
 function drawBag(b) {
-  const x = GE.cx + b.x, y = GE.fy - b.y, wet = clamp(b.soak, 0, 1), sh = b.sh;
+  const x = GE.cx + b.x, y = GE.fy - b.y, wet = clamp(b.soak, 0, 1), sh = b.sh, inner = sh.n === 3 ? 0.74 : 0.86;
   ctx.save(); ctx.translate(x, y); ctx.rotate(-b.a);
-  const paper = [lerp(241, 172, wet * 0.85), lerp(233, 122, wet * 0.85), lerp(214, 72, wet * 0.85)].map(v => v | 0);
+  const paper = [lerp(244, 176, wet * 0.85), lerp(238, 126, wet * 0.85), lerp(222, 74, wet * 0.85)].map(v => v | 0);
   ctx.lineJoin = 'round';
   bagPath(sh, 1);
   ctx.fillStyle = `rgb(${paper})`; ctx.fill();
-  ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   ctx.save(); ctx.clip();
-  ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(42,22,13,.35)';
-  bagPath(sh, sh.n === 3 ? 0.72 : 0.84); ctx.stroke(); ctx.setLineDash([]);
-  const leaf = [lerp(110, 58, wet) | 0, lerp(70, 32, wet) | 0, lerp(36, 14, wet) | 0];
-  ctx.fillStyle = `rgba(${leaf},.22)`; ctx.fillRect(-B, -B, 2 * B, 2 * B);
-  ctx.fillStyle = `rgb(${leaf})`;
-  for (const l of LEAVES) { ctx.beginPath(); ctx.ellipse(l[0], l[1], l[2], l[2] * 0.6, l[3], 0, Math.PI * 2); ctx.fill(); }
+  // Crimp marks across the sealed edge.
+  ctx.strokeStyle = 'rgba(42,22,13,.16)'; ctx.lineWidth = 1.5;
+  for (let r = -B; r < B; r += 5) { ctx.beginPath(); ctx.moveTo(r, -B); ctx.lineTo(r + B * 0.6, B); ctx.stroke(); }
+  // The packed tea.
+  bagPath(sh, inner); ctx.save(); ctx.clip();
+  const dark = [lerp(74, 34, wet), lerp(42, 18, wet), lerp(20, 8, wet)].map(v => v | 0);
+  const mid = [lerp(122, 64, wet), lerp(76, 36, wet), lerp(40, 16, wet)].map(v => v | 0);
+  const light = [lerp(168, 98, wet), lerp(116, 58, wet), lerp(64, 26, wet)].map(v => v | 0);
+  ctx.fillStyle = `rgb(${mid})`; ctx.fillRect(-B, -B, 2 * B, 2 * B);
+  const cols = [`rgb(${dark})`, `rgb(${light})`, `rgb(${mid})`];
+  for (let c = 0; c < 3; c++) {
+    ctx.fillStyle = cols[c]; ctx.beginPath();
+    for (const g of GRAINS) if (g[4] === c) { ctx.moveTo(g[0] + g[2], g[1]); ctx.ellipse(g[0], g[1], g[2], g[2] * 0.62, g[3], 0, Math.PI * 2); }
+    ctx.fill();
+  }
+  // Paper fibre over the tea, thinner once it's wet.
+  ctx.fillStyle = `rgba(255,250,236,${lerp(0.22, 0.06, wet)})`; ctx.fillRect(-B, -B, 2 * B, 2 * B);
   ctx.restore();
+  ctx.setLineDash([3, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(42,22,13,.4)';
+  bagPath(sh, inner); ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+  bagPath(sh, 1); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
   ctx.restore();
 }
-const LEAVES = Array.from({ length: 95 }, () => [rand(-B * 0.46, B * 0.46), rand(-B * 0.46, B * 0.46), rand(2, 4.4), rand(0, 3)]);
+// Tea crumbs: mostly dark and mid-brown, with lighter stalky bits.
+const GRAINS = Array.from({ length: 420 }, () => {
+  const u = Math.random();
+  return [rand(-B * 0.5, B * 0.5), rand(-B * 0.5, B * 0.5), rand(1.3, 3.4), rand(0, 3), u < 0.5 ? 0 : u < 0.78 ? 1 : 2];
+});
 
 const ease = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
 const CARTON_SCALE = 1.9;

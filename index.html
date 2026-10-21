@@ -154,12 +154,15 @@ h1 span + span { color: var(--mustard); transform: rotate(-3deg); }
 .credit a { color: inherit; }
 h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 8vw, 40px); line-height: 1; text-wrap: balance; }
 
-.bagpick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.bagpick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; }
 .bp-label { flex-basis: 100%; text-align: center; font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
 .bp {
-  display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px 6px 8px; border: 3px solid var(--ink); border-radius: 999px;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 8px 7px; border: 3px solid var(--ink); border-radius: 16px;
   background: var(--cream); font: 600 14px var(--f-body); color: var(--ink); cursor: pointer; touch-action: manipulation;
 }
+.bp-top { display: inline-flex; align-items: center; gap: 5px; }
+.bp .mdiff { align-self: center; font-size: 9.5px; padding: 1px 7px; border-width: 1.5px; }
+.bp .d-hard { background: var(--tomato); color: var(--cream); }
 .bp svg { width: 16px; height: 16px; fill: #e9d9b4; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; }
 .bp[aria-checked="true"] { background: var(--mustard); }
 .bp:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
@@ -198,6 +201,17 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 15px; line-height: 1.4; max-width: 42ch; }
 .best { margin: 0; font-size: 13px; font-weight: 600; color: var(--tile); }
+.rec-sub { margin: 0; font-size: 14px; color: var(--dim); }
+.rec-wrap { overflow-x: auto; }
+.rec { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+.rec th { font: 800 11px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 2px; }
+.rec th.mug { text-align: left; font: 15px var(--f-display); letter-spacing: 0; text-transform: none; color: var(--ink); width: 30%; }
+.rec .rec-diff { display: block; font-size: 9.5px; letter-spacing: .08em; font-weight: 700; opacity: .75; }
+.rec td { background: var(--cream); border: 2px solid var(--ink); border-radius: 10px; padding: 6px 4px; text-align: center; vertical-align: middle; }
+.rec td.none { background: transparent; border-style: dashed; border-color: rgba(42,22,13,.3); color: rgba(42,22,13,.4); }
+.rec td.top { background: var(--mustard); }
+.rec .sc { display: block; font: 22px var(--f-display); line-height: 1; font-variant-numeric: tabular-nums; }
+.rec .tt { display: block; font-size: 11px; line-height: 1.2; margin-top: 3px; overflow-wrap: anywhere; }
 .btnrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 #copyBox { width: 100%; font: 13px var(--f-body); border: 2px solid var(--ink); border-radius: 8px; padding: 8px; resize: none; }
 
@@ -262,11 +276,12 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <h2>Pick your vessel</h2>
     <div class="bagpick" role="radiogroup" aria-label="Tea bag shape">
       <span class="bp-label">Tea bag</span>
-      <button type="button" class="bp" data-bag="square" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Square</button>
-      <button type="button" class="bp" data-bag="pyramid" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 20H3Z"/></svg>Pyramid</button>
-      <button type="button" class="bp" data-bag="round" role="radio"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>Round</button>
+      <button type="button" class="bp" data-bag="pyramid" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 20H3Z"/></svg>Pyramid</span><span class="mdiff d-easy">Easy</span></button>
+      <button type="button" class="bp" data-bag="square" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Square</span><span class="mdiff d-normal">Normal</span></button>
+      <button type="button" class="bp" data-bag="round" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>Round</span><span class="mdiff d-hard">Hard</span></button>
     </div>
     <div class="mugs" id="mugGrid"></div>
+    <button class="link" id="btnRecords" type="button">Your records</button>
     <ol class="how">
       <li>Tap to drop the bag while it swings over the mug.</li>
       <li>Hold to pour, drag to aim. Pour beside the bag: a soggy bag sinks.</li>
@@ -305,10 +320,21 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <p class="best" id="rBest"></p>
     <div class="btnrow">
       <button class="btn primary" id="btnAgain">Brew another</button>
-      <button class="btn" id="btnMugs">Change mug</button>
+      <button class="btn" id="btnMugs">Change mug or bag</button>
     </div>
     <button class="link" id="btnCopy">Copy result</button>
     <textarea id="copyBox" rows="3" readonly hidden></textarea>
+    <button class="link" id="btnRecordsR" type="button">Your records</button>
+  </div>
+</section>
+
+<section class="screen veil" id="scrRecords" hidden>
+  <div class="panel">
+    <p class="kicker">Personal bests</p>
+    <h2>Your records</h2>
+    <p class="rec-sub" id="recSub"></p>
+    <div class="rec-wrap"><table class="rec" id="recTable"></table></div>
+    <button class="btn primary" id="btnRecBack" type="button">Back</button>
   </div>
 </section>
 
@@ -331,14 +357,15 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 
 // World units; tea seconds pass TS times faster than real ones.
 const GRAV = 1800, B = 104, TS = 6;
-// Tea bag shapes. Each has its pinchable points (the corners, or points round the
+// Tea bag shapes, easiest first: a pyramid floats point-up, a square floats flat,
+// and a round bag has no corners at all. Each has its pinchable points (the corners, or points round the
 // rim of a round bag) at radius R, an inertia per unit mass I, and the angle it
 // likes to float at (sym-fold), if any. Corner i sits at angle a + PI/4 + i*2PI/n,
 // so a = PI/4 puts corner 0 straight up.
 const BAGS = {
-  square: { name: 'Square', n: 4, R: B / Math.SQRT2, I: B * B / 6, sym: 4, rest: 0 },
-  pyramid: { name: 'Pyramid', n: 3, R: B * 0.72, I: (B * 0.72) ** 2 / 4, sym: 3, rest: Math.PI / 4 },
-  round: { name: 'Round', n: 16, R: B * 0.56, I: (B * 0.56) ** 2 / 2, sym: 0, rest: 0, round: true },
+  pyramid: { id: 'pyramid', name: 'Pyramid', diff: 'Easy', n: 3, R: B * 0.72, I: (B * 0.72) ** 2 / 4, sym: 3, rest: Math.PI / 4 },
+  square: { id: 'square', name: 'Square', diff: 'Normal', n: 4, R: B / Math.SQRT2, I: B * B / 6, sym: 4, rest: 0 },
+  round: { id: 'round', name: 'Round', diff: 'Hard', n: 16, R: B * 0.56, I: (B * 0.56) ** 2 / 2, sym: 0, rest: 0, round: true },
 };
 let bagShape = 'square';
 try { if (BAGS[localStorage.getItem('ijumh-bag')]) bagShape = localStorage.getItem('ijumh-bag'); } catch (e) {}
@@ -1473,13 +1500,13 @@ addEventListener('resize', measureHud);
 function startGame(m) {
   G = newState(m, 'drop'); GE = geo();
   for (const k in hudCache) delete hudCache[k];
-  ['scrTitle', 'scrMugs', 'scrResult'].forEach(id => $(id).hidden = true);
+  ['scrTitle', 'scrMugs', 'scrResult', 'scrRecords'].forEach(id => $(id).hidden = true);
   setPhaseUI();
   try { localStorage.setItem('ijumh-mug', m.id); } catch (e) {}
 }
 function goMugs() {
   G = demoState(); GE = geo(); setPhaseUI();
-  ['scrTitle', 'scrResult'].forEach(id => $(id).hidden = true);
+  ['scrTitle', 'scrResult', 'scrRecords'].forEach(id => $(id).hidden = true);
   refreshBests();
   $('scrMugs').hidden = false;
 }
@@ -1494,13 +1521,21 @@ function fillPts(r) {
   if (r >= 0.65) return 15;
   return 15 * Math.max(0, (r - 0.15) / 0.5);
 }
-function readBests() { try { return JSON.parse(localStorage.getItem('ijumh-best') || '{}') || {}; } catch (e) { return {}; } }
+// Bests are kept per mug and bag shape, keyed "mug:shape". Records from before
+// bag shapes existed were all set with the square bag, so they count as square.
+const bestKey = (mugId, shape) => `${mugId}:${shape}`;
+function readBests() {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem('ijumh-best') || '{}') || {}; } catch (e) {}
+  for (const m of MUGS) if (o[m.id]) { if (!o[bestKey(m.id, 'square')]) o[bestKey(m.id, 'square')] = o[m.id]; delete o[m.id]; }
+  return o;
+}
 function writeBests(o) { try { localStorage.setItem('ijumh-best', JSON.stringify(o)); } catch (e) {} }
 function refreshBests() {
   const bests = readBests();
   document.querySelectorAll('[data-best]').forEach(el => {
-    const b = bests[el.dataset.best];
-    el.textContent = b ? `Best: ${b.score} · ${b.title}` : '';
+    const b = bests[bestKey(el.dataset.best, bagShape)];
+    el.textContent = b ? `Best with a ${BAGS[bagShape].name.toLowerCase()} bag: ${b.score} · ${b.title}` : '';
   });
 }
 
@@ -1567,11 +1602,12 @@ function showResults() {
   $('rNotes').innerHTML = '';
   for (const n of notes) { const li = document.createElement('li'); li.textContent = n; $('rNotes').append(li); }
 
-  const bests = readBests(), prev = bests[m.id];
-  if (!prev || total > prev.score) { bests[m.id] = { score: total, title }; writeBests(bests); $('rBest').textContent = prev ? `New best for ${m.name}!` : ''; }
-  else $('rBest').textContent = `Best for ${m.name}: ${prev.score} · ${prev.title}`;
+  const shape = G.bag.sh.name.toLowerCase(), key = bestKey(m.id, G.bag.sh.id);
+  const bests = readBests(), prev = bests[key];
+  if (!prev || total > prev.score) { bests[key] = { score: total, title }; writeBests(bests); $('rBest').textContent = prev ? `New best for ${m.name} with a ${shape} bag!` : ''; }
+  else $('rBest').textContent = `Best for ${m.name} with a ${shape} bag: ${prev.score} · ${prev.title}`;
 
-  lastShare = `I Just Use My Hands ☕ ${title} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} ${total}/100 · ${grade.name} brew, ${fmtTime(G.grabTea)} · fingers ${pain}% scorched · ${m.name}`;
+  lastShare = `I Just Use My Hands ☕ ${title} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} ${total}/100 · ${grade.name} brew, ${fmtTime(G.grabTea)} · fingers ${pain}% scorched · ${m.name}, ${G.bag.sh.name.toLowerCase()} bag`;
   $('copyBox').hidden = true; $('btnCopy').textContent = 'Copy result';
   $('hud').hidden = true; $('controls').hidden = true; $('hint').hidden = true;
   $('scrResult').hidden = false;
@@ -1598,7 +1634,7 @@ function syncBagPick() {
   document.querySelectorAll('.bp').forEach(b => b.setAttribute('aria-checked', String(b.dataset.bag === bagShape)));
 }
 document.querySelectorAll('.bp').forEach(btn => btn.addEventListener('click', () => {
-  bagShape = btn.dataset.bag; syncBagPick();
+  bagShape = btn.dataset.bag; syncBagPick(); refreshBests();
   try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
 }));
 syncBagPick();
@@ -1732,6 +1768,29 @@ $('btnSpoon').addEventListener('click', () => {
 });
 $('btnAgain').addEventListener('click', () => startGame(G.mug));
 $('btnMugs').addEventListener('click', goMugs);
+
+// Records: a grid of your best for every mug and bag shape. Back returns to
+// whichever screen opened it.
+let recFrom = 'scrMugs';
+function showRecords(from) {
+  recFrom = from;
+  const bests = readBests(), shapes = Object.values(BAGS);
+  let top = null, n = 0;
+  for (const m of MUGS) for (const sh of shapes) { const r = bests[bestKey(m.id, sh.id)]; if (r) { n++; if (!top || r.score > top.score) top = r; } }
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  $('recTable').innerHTML = `<thead><tr><th></th>${shapes.map(sh => `<th scope="col">${sh.name}<span class="rec-diff">${sh.diff}</span></th>`).join('')}</tr></thead><tbody>` +
+    MUGS.map(m => `<tr><th scope="row" class="mug">${m.name}</th>${shapes.map(sh => {
+      const r = bests[bestKey(m.id, sh.id)];
+      return r ? `<td class="${r === top ? 'top' : ''}"><span class="sc">${r.score}</span><span class="tt">${esc(r.title)}</span></td>` : '<td class="none" aria-label="No record yet">–</td>';
+    }).join('')}</tr>`).join('') + '</tbody>';
+  $('recSub').textContent = n ? `${n} of ${MUGS.length * shapes.length} combinations brewed. Your top score is highlighted.` : 'No records yet. Get a bag out and your best for each mug and bag shows up here.';
+  $(from).hidden = true;
+  $('scrRecords').hidden = false;
+  $('btnRecBack').focus();
+}
+$('btnRecords').addEventListener('click', () => showRecords('scrMugs'));
+$('btnRecordsR').addEventListener('click', () => showRecords('scrResult'));
+$('btnRecBack').addEventListener('click', () => { $('scrRecords').hidden = true; $(recFrom).hidden = false; });
 $('btnCopy').addEventListener('click', () => {
   const fallback = () => { const box = $('copyBox'); box.value = lastShare; box.hidden = false; box.focus(); box.select(); $('btnCopy').textContent = 'Select and copy the text below'; };
   try {

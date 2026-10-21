@@ -1,6 +1,6 @@
 // Keeps the game playable offline once installed. Pages are network-first so
 // updates arrive whenever there's a connection; fonts are served from cache.
-const CACHE = 'ijumh-v2';
+const CACHE = 'ijumh-v3';
 const SHELL = ['./', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

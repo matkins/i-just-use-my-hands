@@ -336,9 +336,9 @@ const GRAV = 1800, B = 104, TS = 6;
 // likes to float at (sym-fold), if any. Corner i sits at angle a + PI/4 + i*2PI/n,
 // so a = PI/4 puts corner 0 straight up.
 const BAGS = {
-  square: { name: 'Square', n: 4, R: B / Math.SQRT2, I: B * B / 6, sym: 4, rest: 0 },
-  pyramid: { name: 'Pyramid', n: 3, R: B * 0.72, I: (B * 0.72) ** 2 / 4, sym: 3, rest: Math.PI / 4 },
-  round: { name: 'Round', n: 16, R: B * 0.56, I: (B * 0.56) ** 2 / 2, sym: 0, rest: 0, round: true },
+  square: { id: 'square', name: 'Square', n: 4, R: B / Math.SQRT2, I: B * B / 6, sym: 4, rest: 0 },
+  pyramid: { id: 'pyramid', name: 'Pyramid', n: 3, R: B * 0.72, I: (B * 0.72) ** 2 / 4, sym: 3, rest: Math.PI / 4 },
+  round: { id: 'round', name: 'Round', n: 16, R: B * 0.56, I: (B * 0.56) ** 2 / 2, sym: 0, rest: 0, round: true },
 };
 let bagShape = 'square';
 try { if (BAGS[localStorage.getItem('ijumh-bag')]) bagShape = localStorage.getItem('ijumh-bag'); } catch (e) {}
@@ -1494,13 +1494,21 @@ function fillPts(r) {
   if (r >= 0.65) return 15;
   return 15 * Math.max(0, (r - 0.15) / 0.5);
 }
-function readBests() { try { return JSON.parse(localStorage.getItem('ijumh-best') || '{}') || {}; } catch (e) { return {}; } }
+// Bests are kept per mug and bag shape, keyed "mug:shape". Records from before
+// bag shapes existed were all set with the square bag, so they count as square.
+const bestKey = (mugId, shape) => `${mugId}:${shape}`;
+function readBests() {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem('ijumh-best') || '{}') || {}; } catch (e) {}
+  for (const m of MUGS) if (o[m.id]) { if (!o[bestKey(m.id, 'square')]) o[bestKey(m.id, 'square')] = o[m.id]; delete o[m.id]; }
+  return o;
+}
 function writeBests(o) { try { localStorage.setItem('ijumh-best', JSON.stringify(o)); } catch (e) {} }
 function refreshBests() {
   const bests = readBests();
   document.querySelectorAll('[data-best]').forEach(el => {
-    const b = bests[el.dataset.best];
-    el.textContent = b ? `Best: ${b.score} · ${b.title}` : '';
+    const b = bests[bestKey(el.dataset.best, bagShape)];
+    el.textContent = b ? `Best with a ${BAGS[bagShape].name.toLowerCase()} bag: ${b.score} · ${b.title}` : '';
   });
 }
 
@@ -1567,11 +1575,12 @@ function showResults() {
   $('rNotes').innerHTML = '';
   for (const n of notes) { const li = document.createElement('li'); li.textContent = n; $('rNotes').append(li); }
 
-  const bests = readBests(), prev = bests[m.id];
-  if (!prev || total > prev.score) { bests[m.id] = { score: total, title }; writeBests(bests); $('rBest').textContent = prev ? `New best for ${m.name}!` : ''; }
-  else $('rBest').textContent = `Best for ${m.name}: ${prev.score} · ${prev.title}`;
+  const shape = G.bag.sh.name.toLowerCase(), key = bestKey(m.id, G.bag.sh.id);
+  const bests = readBests(), prev = bests[key];
+  if (!prev || total > prev.score) { bests[key] = { score: total, title }; writeBests(bests); $('rBest').textContent = prev ? `New best for ${m.name} with a ${shape} bag!` : ''; }
+  else $('rBest').textContent = `Best for ${m.name} with a ${shape} bag: ${prev.score} · ${prev.title}`;
 
-  lastShare = `I Just Use My Hands ☕ ${title} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} ${total}/100 · ${grade.name} brew, ${fmtTime(G.grabTea)} · fingers ${pain}% scorched · ${m.name}`;
+  lastShare = `I Just Use My Hands ☕ ${title} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} ${total}/100 · ${grade.name} brew, ${fmtTime(G.grabTea)} · fingers ${pain}% scorched · ${m.name}, ${G.bag.sh.name.toLowerCase()} bag`;
   $('copyBox').hidden = true; $('btnCopy').textContent = 'Copy result';
   $('hud').hidden = true; $('controls').hidden = true; $('hint').hidden = true;
   $('scrResult').hidden = false;
@@ -1598,7 +1607,7 @@ function syncBagPick() {
   document.querySelectorAll('.bp').forEach(b => b.setAttribute('aria-checked', String(b.dataset.bag === bagShape)));
 }
 document.querySelectorAll('.bp').forEach(btn => btn.addEventListener('click', () => {
-  bagShape = btn.dataset.bag; syncBagPick();
+  bagShape = btn.dataset.bag; syncBagPick(); refreshBests();
   try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
 }));
 syncBagPick();

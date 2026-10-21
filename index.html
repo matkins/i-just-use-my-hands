@@ -90,9 +90,8 @@ body {
 .toggle[aria-checked="true"] { background: var(--tile); }
 .toggle[aria-checked="true"]::after { left: 26px; }
 .toggle:focus-visible { outline: 3px solid var(--mustard); outline-offset: 2px; }
-.reset { display: grid; gap: 6px; }
-.reset .btnrow { flex-wrap: nowrap; }
-.reset .btnrow .btn { flex: 1 1 0; padding-inline: 10px; font-size: 17px; }
+.rec-foot { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.rec-foot .btn.primary { flex: 1 1 auto; }
 .iconcol { display: flex; flex-direction: column; gap: 6px; flex: 0 0 36px; }
 .iconcol .iconbtn { flex: 0 0 36px; width: 36px; height: 36px; font-size: 16px; box-shadow: 0 3px 0 var(--ink); }
 .iconcol .iconbtn svg { width: 19px; height: 19px; }
@@ -393,13 +392,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li id="rowVib" hidden><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
       <li><span><b>Tilt to slosh</b><small>Tilt your phone left and right to slide the mug while it brews.</small></span><button class="toggle" id="setTilt" type="button" role="switch" aria-label="Tilt to slosh"></button></li>
     </ul>
-    <div class="reset">
-      <div class="btnrow">
-        <button class="btn" id="btnRecordsS" type="button">Your records</button>
-        <button class="btn" id="btnReset" type="button">Reset records</button>
-      </div>
-      <p class="step-sub" id="resetNote" hidden></p>
-    </div>
+    <button class="btn" id="btnRecordsS" type="button">Your records</button>
     <button class="btn primary" id="btnSetBack" type="button">Back</button>
   </div>
 </section>
@@ -410,7 +403,11 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <h2>Your records</h2>
     <p class="rec-sub" id="recSub"></p>
     <div class="rec-wrap"><table class="rec" id="recTable"></table></div>
-    <button class="btn primary" id="btnRecBack" type="button">Back</button>
+    <p class="step-sub" id="resetNote" hidden></p>
+    <div class="rec-foot">
+      <button class="btn" id="btnReset" type="button">Reset records</button>
+      <button class="btn primary" id="btnRecBack" type="button">Back</button>
+    </div>
   </div>
 </section>
 
@@ -2028,6 +2025,7 @@ $('btnMugs').addEventListener('click', goMugs);
 let recFrom = 'scrMugs';
 function showRecords(from) {
   recFrom = from;
+  $('resetNote').hidden = true; disarm($('btnReset'), 'Reset records');
   const bests = readBests(), shapes = Object.values(BAGS);
   let top = null, n = 0;
   for (const m of MUGS) for (const sh of shapes) { const r = bests[bestKey(m.id, sh.id)]; if (r) { n++; if (!top || r.score > top.score) top = r; } }
@@ -2082,7 +2080,6 @@ function openSettings(from) {
   settingsFrom = from;
   syncSettings();
   $('btnSetBack').textContent = from === 'game' ? 'Back to the tea' : 'Back';
-  $('resetNote').hidden = true; disarm($('btnReset'), 'Reset records');
   if (from === 'game') { pauseGame(); $('scrSettings').hidden = false; } else showScreen('scrSettings');
 }
 const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} };
@@ -2120,9 +2117,10 @@ $('btnChange').addEventListener('click', () => {
   goMugs();
 });
 $('btnReset').addEventListener('click', () => {
-  if (!confirmTap($('btnReset'), 'Reset records', 'Tap again to delete all records')) return;
+  if (!confirmTap($('btnReset'), 'Reset records', 'Tap again to delete them all')) return;
   try { localStorage.removeItem('ijumh-best'); } catch (e) {}
   refreshBests();
+  showRecords(recFrom);
   $('resetNote').textContent = 'All records cleared.'; $('resetNote').hidden = false;
 });
 $('btnSettings').addEventListener('click', () => { if (G.phase !== 'demo') openSettings('game'); });

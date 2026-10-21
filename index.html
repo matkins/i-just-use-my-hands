@@ -1372,6 +1372,17 @@ function buildMugCards() {
 }
 
 /* ---------------- input ---------------- */
+// On touch, the fingertip sits well above the real finger so neither it nor the bag
+// hanging below it ends up under your thumb. Near the buttons at the bottom the gap
+// shrinks, so the floor of the mug can still be reached.
+const TOUCH_OFF = 120, TOUCH_OFF_MIN = 36, TOUCH_RAMP = 140;
+function touchOff(e) {
+  if (e.pointerType !== 'touch') return 0;
+  const btn = $('btnSpoon'), r = btn.hidden ? null : btn.getBoundingClientRect();
+  const floor = r && r.height ? r.top - 8 : CH;
+  const k = clamp((floor - e.clientY) / TOUCH_RAMP, 0, 1);
+  return lerp(TOUCH_OFF_MIN, TOUCH_OFF, k) / S;
+}
 function capture(e) { try { cv.setPointerCapture(e.pointerId); } catch (err) {} }
 function dropBag() {
   const b = G.bag;
@@ -1386,14 +1397,13 @@ cv.addEventListener('pointerdown', e => {
   if (G.phase === 'pour') { const K = G.kettle; K.holding = true; K.pid = e.pointerId; K.aim = clamp(wx, 40, WW - 40); capture(e); return; }
   if (G.phase !== 'steep') return;
   capture(e);
-  // On touch, the fingertip sits above the real finger so it isn't hidden under it.
-  const off = e.pointerType === 'touch' ? 56 / S : 0;
+  const off = touchOff(e);
   const rx = wx - GE.cx, h = GE.fy - (wy - off);
   if (Math.abs(rx) < m.W / 2 + 4 && h > 0) {
     let F = G.finger;
     if (F && (F.flinch || F.grabbed)) return;
     if (!F) F = G.finger = { x: clamp(rx, -m.W / 2 + 12, m.W / 2 - 12), h: Math.max(m.D + 260, h + 200), slipT: -9, lukeWarned: false };
-    F.active = true; F.pid = e.pointerId; F.tx = rx; F.th = h; F.off = off;
+    F.active = true; F.pid = e.pointerId; F.tx = rx; F.th = h;
     noteReach();
     return;
   }
@@ -1404,7 +1414,7 @@ cv.addEventListener('pointermove', e => {
   const K = G.kettle;
   if (G.phase === 'pour' && K.holding && e.pointerId === K.pid) K.aim = clamp(e.clientX / S, 40, WW - 40);
   const F = G.finger;
-  if (F && F.active && F.pid === e.pointerId) { F.tx = e.clientX / S - GE.cx; F.th = GE.fy - (e.clientY / S - F.off); }
+  if (F && F.active && F.pid === e.pointerId) { F.tx = e.clientX / S - GE.cx; F.th = GE.fy - (e.clientY / S - touchOff(e)); }
   const d = G.drag;
   if (d && d.pid === e.pointerId) {
     const dx = e.clientX - d.x, dy = e.clientY - d.y, l = Math.hypot(dx, dy);

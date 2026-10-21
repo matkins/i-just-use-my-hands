@@ -489,8 +489,9 @@ const sfx = {
     AU.pourF.frequency.setTargetAtTime(450 + p * 500 + (G ? G.L / G.mug.D : 0) * 1100, t, 0.1);
   },
 };
-// Buzzes need at least ~25 ms to be felt on most phones. Only Android browsers
-// support this; iPhones ignore it.
+// Short buzzes like these count as touch feedback on Android, so they need the
+// phone's touch vibration setting on. Only Android browsers support this;
+// iPhones ignore it.
 function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 
 // Tilt. While brewing, tilting the phone left or right (from however you were
@@ -686,7 +687,7 @@ function stepSlosh(dt) {
     const dL = Math.min(G.L, (edge - m.D) * 3 * dt);
     G.L -= dL; G.spillVol += dL;
     const sg = Math.sign(G.s) || 1;
-    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(45); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
+    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
     G.spillT = G.t;
     if (Math.random() < 0.7) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 4, vx: sg * rand(40, 170), vy: -rand(40, 200), r: rand(2.5, 5), life: 2, max: 2, col: liquidCss() });
   } else if (edge < m.D - 4 && G.t - G.spillT > 0.4) G.spilling = false;
@@ -761,7 +762,7 @@ function addWater(dv, xr) {
 function overflow(ex) {
   const m = G.mug;
   G.L = m.D; G.spillVol += ex; G.spillT = G.t;
-  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(45); pop('Overflow!', TOMATO, 36); }
+  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop('Overflow!', TOMATO, 36); }
   for (const sg of [-1, 1]) if (Math.random() < 0.5) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 2, vx: sg * rand(30, 110), vy: -rand(20, 90), r: rand(2.5, 4.5), life: 2, max: 2, col: liquidCss() });
 }
 function splashCounter(dv, wx) {
@@ -827,7 +828,7 @@ function burn(sub, tf) {
   G.burns++;
   G.shake = REDUCED ? 0 : 12; G.flash = 1;
   G.ripA = Math.min(7, G.ripA + 3);
-  sfx.sizzle(); sfx.ow(); vibrate(140);
+  sfx.sizzle(); sfx.ow(); vibrate(90);
   splashAt(GE.cx + F.x, GE.fy - surf(F.x), 6, liquidCss(), 260);
   if (G.pain >= 100) { pop('MEDIUM RARE', TOMATO, 50); finish('fail'); }
   else pop(pick(['OW!', 'TSSS!', 'AAARGH!', 'HOT HOT HOT', 'WHY?!', 'MY FINGER!']), TOMATO, 44);
@@ -835,7 +836,7 @@ function burn(sub, tf) {
 
 function grab() {
   const F = G.finger, b = G.bag, cs = corners(b);
-  vibrate([35, 60, 45]);
+  vibrate([18, 40, 28]);
   let bi = 0, bd = 1e9;
   cs.forEach((c, i) => { const d = Math.hypot(b.x + c.rx - F.x, b.y + c.ry - F.h); if (d < bd) { bd = d; bi = i; } });
   b.attach = bi; b.phi = b.a + Math.PI / 4 + bi * Math.PI * 2 / b.sh.n; b.phiV = b.w * 0.5; b.state = 'lifted';
@@ -871,7 +872,7 @@ function tapMug() {
   sfx.tap();
   G.ripA = Math.min(7, G.ripA + 3 + G.tapHeat * 0.6);
   if (b.state === 'mug' && b.f > 0.02) { b.vy += (45 * b.f + 15) * kick; b.w += rand(-2, 2) * kick; }
-  if (kick > 0.3) vibrate(25);
+  if (kick > 0.3) vibrate(10);
   if (G.tapHeat > 3.5 && G.t - G.rattleT > 3) { G.rattleT = G.t; pop(pick(['Stop rattling it!', 'Easy, easy.', 'It’s a mug, not a drum.']), PAPER, 28); }
   pop('tink', CREAM, 22, GE.cx + rand(-60, 60), GE.rimY - 20);
 }
@@ -1874,7 +1875,7 @@ $('btnVib').addEventListener('click', () => {
   if (!('vibrate' in navigator)) msg = 'This browser can’t vibrate. iPhones never can from a web page.';
   else {
     let ok = false; try { ok = navigator.vibrate([200, 100, 200]); } catch (e) {}
-    msg = ok ? 'Buzzing now. If you felt nothing, check your phone’s vibration or touch feedback settings, and that battery saver and Do Not Disturb are off.'
+    msg = ok ? 'Buzzing now. If you felt nothing, turn on Touch vibration (sometimes called touch feedback) in your phone’s vibration settings, and check Do Not Disturb is off.'
       : 'Your browser refused to vibrate.';
   }
   $('vibNote').textContent = msg; $('vibNote').hidden = false;

@@ -250,7 +250,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 </head>
 <body>
 
-<canvas id="c" aria-label="A mug of tea on a kitchen counter"></canvas>
+<canvas id="c" aria-label="A mug of tea in a kitchen"></canvas>
 
 <div class="hud" id="hud" hidden>
   <div class="chip brew">
@@ -714,7 +714,7 @@ function stepSlosh(dt) {
     const dL = Math.min(G.L, (edge - m.D) * 3 * dt);
     G.L -= dL; G.spillVol += dL;
     const sg = Math.sign(G.s) || 1;
-    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
+    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop(pick(['SPLOSH!', 'Over the side!', 'Mop that up!']), PAPER, 32); }
     G.spillT = G.t;
     if (Math.random() < 0.7) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 4, vx: sg * rand(40, 170), vy: -rand(40, 200), r: rand(2.5, 5), life: 2, max: 2, col: liquidCss() });
   } else if (edge < m.D - 4 && G.t - G.spillT > 0.4) G.spilling = false;
@@ -757,7 +757,7 @@ function updateDrop(dt) {
     const hC = -(m.base + (m.saucer ? 14 : 0));
     if (b.y + ex.bot <= hC) {
       b.a = b.sh.rest; b.y = hC - extent(b).bot; b.state = 'table'; b.vx = b.vy = b.w = 0; b.tableT = G.t;
-      G.misses++; sfx.plop(); pop(pick(['Missed!', 'On the counter!', 'Splat.']), TOMATO, 38);
+      G.misses++; sfx.plop(); pop(pick(['Missed!', 'Wide of the mug!', 'Splat.']), TOMATO, 38);
     }
   } else if (b.state === 'table') {
     if (G.t - b.tableT > 1.4) { b.state = 'held'; h.up = 600; pop('Five-second rule. Again.', PAPER, 28); }
@@ -794,7 +794,7 @@ function overflow(ex) {
 }
 function splashCounter(dv, wx) {
   addPuddle(wx, dv * 0.4, 'rgba(205,222,228,0.75)');
-  if (!G.puddleWarned) { G.puddleWarned = true; G.spills++; pop('Oi! On the counter!', TOMATO, 32); sfx.splash(); }
+  if (!G.puddleWarned) { G.puddleWarned = true; G.spills++; pop('Oi! In the mug!', TOMATO, 32); sfx.splash(); }
   if (Math.random() < 0.5) G.parts.push({ kind: 'splash', x: wx, y: GE.counterY - 2, vx: rand(-120, 120), vy: -rand(60, 180), r: rand(1.5, 3), life: 1, max: 1 });
 }
 
@@ -1727,7 +1727,7 @@ function showResults() {
   if (G.milk) notes.push('Milk in with the bag still in. Some people would call the police.');
   if (G.Tgrab < 50 && kind === 'out') notes.push('You waited until it was lukewarm. Clever, but it’s cold now.');
   if (G.Lgrab / m.D < 0.4 && kind === 'out') notes.push('That’s barely a mouthful.');
-  if (G.misses) notes.push(`${G.misses} tea bag${G.misses > 1 ? 's' : ''} went on the counter. Five-second rule.`);
+  if (G.misses) notes.push(`${G.misses} tea bag${G.misses > 1 ? 's' : ''} missed the mug. Five-second rule.`);
 
   $('rMug').textContent = m.name;
   $('rTitle').textContent = title;

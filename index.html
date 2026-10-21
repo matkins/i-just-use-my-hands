@@ -249,7 +249,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li>Tap to drop the bag while it swings over the mug.</li>
       <li>Hold to pour, drag to aim. Pour beside the bag: a soggy bag sinks.</li>
       <li>Let it brew. The dashed zone on the steep bar is a perfect cuppa.</li>
-      <li>Swipe beside the mug to slosh it, draw circles to swirl, tap it to make the bag bob. When a dry corner pokes out, reach in and pinch it. Touch the tea and you'll know about it.</li>
+      <li>Swipe level with the mug to slosh it, draw circles to swirl, tap it to make the bag bob. When a dry corner pokes out, drag down from above the mug to reach in and pinch it. Touch the tea and you'll know about it.</li>
     </ol>
   </div>
 </section>
@@ -261,10 +261,10 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <ul class="controls-list">
       <li><b>Drop</b><span>Tap anywhere while the bag swings over the mug.</span></li>
       <li><b>Pour</b><span>Hold to pour and drag to aim. Pour beside the bag: a soggy bag sinks. Tap “That’ll do” when you reach the dotted line.</span></li>
-      <li><b>Slosh</b><span>Swipe left and right beside the mug, not on it. The tea rocks and the bag rides up the side.</span></li>
-      <li><b>Swirl</b><span>Draw circles beside the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
-      <li><b>Bob</b><span>Tap beside the mug to knock it. The bag bobs up for a moment.</span></li>
-      <li><b>Grab</b><span>Press just above the mug and drag down to lower your finger, or touch inside the mug. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
+      <li><b>Slosh</b><span>Swipe left and right anywhere level with the mug. The tea rocks and the bag rides up the side.</span></li>
+      <li><b>Swirl</b><span>Draw circles level with the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
+      <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
+      <li><b>Grab</b><span>Press anywhere above the mug and drag down to lower your hand. Dragging to the rim reaches the bottom. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
       <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
@@ -1204,9 +1204,9 @@ function hud() {
 const HINTS = {
   drop: 'Tap to drop the tea bag in.',
   pour: 'Hold to pour, drag to aim. Fill to the dotted line, then tap “That’ll do”.',
-  steep: 'Swipe left and right beside the mug to slosh it. Draw circles to swirl the bag, or tap beside the mug to make it bob.',
+  steep: 'Swipe left and right level with the mug to slosh it. Draw circles to swirl the bag, or tap the mug to make it bob.',
 };
-const HINT_REACH = 'Now press just above the mug and drag down to reach in. Pinch a corner that’s poking out of the tea.';
+const HINT_REACH = 'Now press anywhere above the mug and drag down to reach in. Pinch a corner that’s poking out of the tea.';
 function noteSlosh() {
   if (G.phase !== 'steep' || G.sloshed) return;
   G.sloshed = true;
@@ -1381,17 +1381,6 @@ function buildMugCards() {
 }
 
 /* ---------------- input ---------------- */
-// On touch, the fingertip sits well above the real finger so neither it nor the bag
-// hanging below it ends up under your thumb. Near the buttons at the bottom the gap
-// shrinks, so the floor of the mug can still be reached.
-const TOUCH_OFF = 120, TOUCH_OFF_MIN = 36, TOUCH_RAMP = 140;
-function touchOff(e) {
-  if (e.pointerType !== 'touch') return 0;
-  const btn = $('btnSpoon'), r = btn.hidden ? null : btn.getBoundingClientRect();
-  const floor = r && r.height ? r.top - 8 : CH;
-  const k = clamp((floor - e.clientY) / TOUCH_RAMP, 0, 1);
-  return lerp(TOUCH_OFF_MIN, TOUCH_OFF, k) / S;
-}
 function capture(e) { try { cv.setPointerCapture(e.pointerId); } catch (err) {} }
 function dropBag() {
   const b = G.bag;
@@ -1406,19 +1395,16 @@ cv.addEventListener('pointerdown', e => {
   if (G.phase === 'pour') { const K = G.kettle; K.holding = true; K.pid = e.pointerId; K.aim = clamp(wx, 40, WW - 40); capture(e); return; }
   if (G.phase !== 'steep') return;
   capture(e);
-  const off = touchOff(e);
-  const rx = wx - GE.cx, h = GE.fy - (wy - off);
-  // Pressing just above the mug steers the hand from there, like a joystick:
-  // dragging down to the rim lowers the fingertip to the floor of the mug, so
-  // your own finger never has to cover the mug.
-  const above = wy < GE.rimY && Math.abs(rx) < m.W / 2 + 40;
-  if (above || (Math.abs(rx) < m.W / 2 + 4 && h > 0)) {
+  // Anywhere above the rim steers the hand, like a joystick: dragging down to the
+  // rim lowers the fingertip to the floor of the mug, so your own finger never
+  // covers the mug. Anywhere level with the mug or below it works the mug.
+  if (wy < GE.rimY) {
     let F = G.finger;
     if (F && (F.flinch || F.grabbed)) return;
-    const h0 = above ? m.D + 30 : h, x0 = clamp(rx, -m.W / 2 + 12, m.W / 2 - 12);
-    if (!F) F = G.finger = { x: x0, h: Math.max(m.D + 260, h0 + 200), slipT: -9, lukeWarned: false };
-    F.active = true; F.pid = e.pointerId; F.tx = above ? x0 : rx; F.th = h0;
-    F.steer = above ? { px: e.clientX, py: e.clientY, x0, h0, gain: clamp(h0 / Math.max(1, GE.rimY - wy - 8), 1, 5) } : null;
+    const h0 = m.D + 30, x0 = clamp(wx - GE.cx, -m.W / 2 + 12, m.W / 2 - 12);
+    if (!F) F = G.finger = { x: x0, h: m.D + 260, slipT: -9, lukeWarned: false };
+    F.active = true; F.pid = e.pointerId; F.tx = x0; F.th = h0;
+    F.steer = { px: e.clientX, py: e.clientY, x0, h0, gain: clamp(h0 / Math.max(1, GE.rimY - wy - 8), 1, 5) };
     noteReach();
     return;
   }
@@ -1431,8 +1417,7 @@ cv.addEventListener('pointermove', e => {
   const F = G.finger;
   if (F && F.active && F.pid === e.pointerId) {
     const st = F.steer;
-    if (st) { F.tx = st.x0 + (e.clientX - st.px) / S; F.th = st.h0 - (e.clientY - st.py) / S * st.gain; }
-    else { F.tx = e.clientX / S - GE.cx; F.th = GE.fy - (e.clientY / S - touchOff(e)); }
+    F.tx = st.x0 + (e.clientX - st.px) / S; F.th = st.h0 - (e.clientY - st.py) / S * st.gain;
   }
   const d = G.drag;
   if (d && d.pid === e.pointerId) {

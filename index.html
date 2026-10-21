@@ -1,0 +1,1431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>I Just Use My Hands</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#2b6b64">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap">
+<style>
+/* Layout: full-bleed canvas kitchen; chunky paper "sticker" UI floats over it */
+:root {
+  --ink: #2a160d;
+  --paper: #fff1cf;
+  --cream: #fffaf0;
+  --tile: #2b6b64;
+  --mustard: #e9ab22;
+  --tomato: #e0482a;
+  --dim: #7b5a43;
+  --veil: rgba(28, 14, 8, 0.45);
+  --f-display: "Bagel Fat One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  --f-body: "Bricolage Grotesque", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body {
+  background: var(--tile);
+  color: var(--ink);
+  font-family: var(--f-body);
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+/* HUD */
+.hud {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+  display: flex; gap: 8px; align-items: stretch;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+}
+.chip {
+  flex: 1 1 0; min-width: 0;
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink);
+  padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 4px;
+}
+.chip.brew { flex-grow: 1.4; }
+.chip.temp { flex: 0 0 auto; min-width: 82px; transition: background-color .3s; }
+.chip.temp.hot { background: var(--tomato); color: var(--cream); }
+.chip.temp.hot .lab { color: var(--cream); }
+.chip.temp.warm { background: var(--mustard); }
+.chip .lab { font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--dim); }
+.chip .row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.chip .val { font-family: var(--f-display); font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
+.chip .sub { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: 10px; border: 2px solid var(--ink); border-radius: 6px; background: var(--cream); position: relative; overflow: hidden; }
+.bar b { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--mustard); }
+.bar .zone { position: absolute; top: 0; bottom: 0; left: 46.7%; width: 26.7%; background: rgba(43, 107, 100, .28); border-left: 2px dashed var(--tile); border-right: 2px dashed var(--tile); }
+.bar.pain b { background: var(--tomato); }
+.iconbtn {
+  pointer-events: auto; flex: 0 0 44px; align-self: flex-start;
+  height: 44px; border-radius: 50%;
+  background: var(--paper); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink);
+  font: 18px var(--f-display); color: var(--ink); cursor: pointer; padding: 0;
+}
+.iconbtn[aria-pressed="false"] { text-decoration: line-through; opacity: .75; }
+
+.controls {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+}
+.controls .btn { pointer-events: auto; }
+
+.btn {
+  font-family: var(--f-display); font-size: 19px; line-height: 1.1; color: var(--ink);
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 999px;
+  padding: 12px 22px; box-shadow: 0 5px 0 var(--ink); cursor: pointer;
+  transition: transform .08s, box-shadow .08s, background-color .2s;
+  touch-action: manipulation;
+}
+.btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+.btn.primary { background: var(--mustard); }
+.btn.warn { background: var(--tomato); color: var(--cream); }
+.btn.big { font-size: 24px; padding: 16px 30px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:focus-visible, .iconbtn:focus-visible, .mugcard:focus-visible, .link:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+
+.hint {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 4;
+  top: calc(env(safe-area-inset-top, 0px) + 96px);
+  width: max-content; max-width: min(440px, calc(100% - 32px));
+  background: rgba(42, 22, 13, .84); color: var(--cream);
+  padding: 10px 16px; border-radius: 12px;
+  font-weight: 600; font-size: 15px; line-height: 1.35; text-align: center; text-wrap: balance;
+  pointer-events: none;
+}
+
+/* Screens */
+.screen {
+  position: fixed; inset: 0; z-index: 10; overflow-y: auto;
+  display: flex; flex-direction: column;
+  padding-block: calc(env(safe-area-inset-top, 0px) + 24px) calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  touch-action: pan-y;
+}
+.screen.veil { background: var(--veil); }
+.panel {
+  margin: auto; width: 100%; max-width: 560px;
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 22px;
+  box-shadow: 0 8px 0 var(--ink);
+  padding: 22px 20px 24px; display: flex; flex-direction: column; gap: 14px;
+}
+.titleblock { margin: 0 auto auto; max-width: 560px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 4vh; }
+.kicker { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mustard); }
+.panel .kicker { color: var(--dim); }
+h1 {
+  margin: 0; font-family: var(--f-display); font-weight: 400; line-height: .9;
+  font-size: clamp(54px, 16vw, 104px); color: var(--cream);
+  text-shadow: 3px 3px 0 var(--ink), -3px 3px 0 var(--ink), 3px -3px 0 var(--ink), -3px -3px 0 var(--ink), 0 9px 0 var(--ink);
+  text-wrap: balance;
+}
+h1 span { display: block; }
+h1 span + span { color: var(--mustard); transform: rotate(-3deg); }
+.lede { margin: 6px 0 4px; max-width: 30ch; color: var(--cream); font-size: 18px; font-weight: 600; line-height: 1.4; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.small { margin: 0; color: var(--cream); opacity: .8; font-size: 13px; }
+h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 8vw, 40px); line-height: 1; text-wrap: balance; }
+
+.mugs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mugcard {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; min-width: 0;
+  background: var(--cream); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink);
+  padding: 8px 10px 12px; font: inherit; color: inherit; cursor: pointer;
+  transition: transform .08s, box-shadow .08s;
+  touch-action: manipulation;
+}
+.mugcard:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.mugcard canvas { width: 100%; height: auto; aspect-ratio: 300 / 210; max-width: 100%; display: block; border-radius: 10px; background: #f6e3b8; }
+.mname { font-family: var(--f-display); font-size: 19px; line-height: 1.05; margin-top: 4px; }
+.mdiff { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 2px solid var(--ink); }
+.d-easy { background: #bfe3c9; } .d-normal { background: var(--paper); } .d-hard { background: var(--mustard); } .d-silly { background: var(--tomato); color: var(--cream); }
+.mblurb { font-size: 13px; line-height: 1.3; color: var(--dim); }
+.mstats { display: grid; gap: 3px; margin-top: 4px; }
+.st { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.pips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.pips i { height: 7px; border-radius: 3px; background: rgba(42,22,13,.14); }
+.pips i.on { background: var(--ink); }
+.mbest { font-size: 12px; font-weight: 600; color: var(--tile); min-height: 1em; }
+
+.how { margin: 0; padding-left: 22px; display: grid; gap: 6px; font-size: 14px; line-height: 1.4; }
+.how li::marker { font-family: var(--f-display); color: var(--tomato); }
+.link { background: none; border: 0; padding: 4px; font: 600 15px var(--f-body); color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; align-self: center; }
+
+.result { text-align: center; align-items: center; }
+.result h2 { font-size: clamp(34px, 10vw, 48px); transform: rotate(-2deg); }
+.stars { font-size: 34px; letter-spacing: 4px; color: var(--mustard); -webkit-text-stroke: 2px var(--ink); line-height: 1; }
+.score { font-family: var(--f-display); font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; }
+.score small { font-size: 22px; color: var(--dim); }
+.stats { margin: 0; width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; text-align: left; font-size: 15px; border-top: 2px dashed rgba(42,22,13,.3); border-bottom: 2px dashed rgba(42,22,13,.3); padding-block: 12px; }
+.stats dt { font-weight: 800; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); align-self: center; }
+.stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 15px; line-height: 1.4; max-width: 42ch; }
+.best { margin: 0; font-size: 13px; font-weight: 600; color: var(--tile); }
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+#copyBox { width: 100%; font: 13px var(--f-body); border: 2px solid var(--ink); border-radius: 8px; padding: 8px; resize: none; }
+
+@media (max-width: 380px) {
+  .chip { padding: 5px 7px 7px; }
+  .chip .val { font-size: 19px; }
+  .mugs { gap: 8px; }
+  .mblurb { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn, .mugcard { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="c" aria-label="A mug of tea on a kitchen counter"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <div class="chip brew">
+    <div class="row"><span class="lab">Steep</span><span class="val" id="vTime">0:00</span></div>
+    <div class="bar"><i class="zone"></i><b id="bBrew"></b></div>
+    <span class="sub" id="vGrade">Dry bag</span>
+  </div>
+  <div class="chip temp" id="chipTemp">
+    <span class="lab">Tea</span>
+    <span class="val" id="vTemp">—</span>
+    <span class="sub" id="vHeat">Kettle on</span>
+  </div>
+  <div class="chip">
+    <span class="lab">Fingers</span>
+    <div class="bar pain"><b id="bPain"></b></div>
+    <span class="sub" id="vPain">Pristine</span>
+  </div>
+  <button class="iconbtn" id="btnMute" aria-label="Sound" aria-pressed="true">♪</button>
+</div>
+
+<div class="hint" id="hint" hidden></div>
+
+<div class="controls" id="controls" hidden>
+  <button class="btn primary" id="btnDone" hidden>That'll do</button>
+  <button class="btn" id="btnMilk" hidden>Add milk</button>
+  <button class="btn" id="btnSpoon" hidden>Use a spoon</button>
+</div>
+
+<section class="screen" id="scrTitle">
+  <div class="titleblock">
+    <p class="kicker">A game of thermal courage</p>
+    <h1><span>I just use</span><span>my hands</span></h1>
+    <p class="lede">Get the tea bag out of a freshly boiled cuppa. No spoon. Try not to cook your fingertips.</p>
+    <button class="btn primary big" id="btnStart">Put the kettle on</button>
+    <p class="small">Sound on for the full sizzle.</p>
+  </div>
+</section>
+
+<section class="screen veil" id="scrMugs" hidden>
+  <div class="panel">
+    <p class="kicker">Step one</p>
+    <h2>Pick your vessel</h2>
+    <div class="mugs" id="mugGrid"></div>
+    <ol class="how">
+      <li>Tap to drop the bag while it swings over the mug.</li>
+      <li>Hold to pour, drag to aim. Pour beside the bag: a soggy bag sinks.</li>
+      <li>Let it brew. The dashed zone on the steep bar is a perfect cuppa.</li>
+      <li>Swipe beside the mug to slosh it, draw circles to swirl, tap it to make the bag bob. When a dry corner pokes out, reach in and pinch it. Touch the tea and you'll know about it.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="screen veil" id="scrResult" hidden>
+  <div class="panel result">
+    <p class="kicker" id="rMug"></p>
+    <h2 id="rTitle"></h2>
+    <div class="stars" id="rStars" aria-label=""></div>
+    <div class="score"><span id="rScore">0</span><small>/100</small></div>
+    <dl class="stats" id="rStats"></dl>
+    <ul class="notes" id="rNotes"></ul>
+    <p class="best" id="rBest"></p>
+    <div class="btnrow">
+      <button class="btn primary" id="btnAgain">Brew another</button>
+      <button class="btn" id="btnMugs">Change mug</button>
+    </div>
+    <button class="link" id="btnCopy">Copy result</button>
+    <textarea id="copyBox" rows="3" readonly hidden></textarea>
+  </div>
+</section>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+
+const INK = '#2a160d', PAPER = '#fff1cf', CREAM = '#fffaf0', TILE = '#2b6b64', MUSTARD = '#e9ab22', TOMATO = '#e0482a';
+const SKIN = '#f0bf95', SKIN_SH = '#d49b70';
+const DISPLAY = '"Bagel Fat One", "Arial Rounded MT Bold", sans-serif';
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+// World units; tea seconds pass TS times faster than real ones.
+const GRAV = 1800, B = 84, BR = B / Math.SQRT2, IB = B * B / 6, TS = 6;
+const KY = 14, CY = 4.5, KA = 7, CA = 2.6;
+
+const MUGS = [
+  { id: 'classic', name: 'The Classic', blurb: 'Dependable. Slightly chipped. Holds a proper brew.',
+    W: 220, D: 250, wall: 20, base: 24, tau: 1100, damp: 0.9, swing: 1.0,
+    body: '#f4ecd8', inner: '#fbf6ea', trim: '#d4452c', stats: { heat: 3, width: 3, depth: 3 }, diff: 'Normal' },
+  { id: 'teacup', name: "Nan's Teacup", blurb: 'Shallow and fancy. Cools fast. Spills if you look at it.',
+    W: 250, D: 140, wall: 12, base: 14, tau: 520, damp: 0.55, swing: 0.8, saucer: true,
+    body: '#fdfcff', inner: '#ffffff', trim: '#5b7fd6', stats: { heat: 1, width: 4, depth: 1 }, diff: 'Easy' },
+  { id: 'pint', name: 'Office Pint', blurb: 'A litre of regret. Stays hot most of the afternoon.',
+    W: 270, D: 320, wall: 24, base: 26, tau: 1700, damp: 0.8, swing: 1.15,
+    body: '#2f4e93', inner: '#f3f1ea', trim: '#f2c14e', stats: { heat: 4, width: 5, depth: 4 }, diff: 'Hard' },
+  { id: 'travel', name: 'Travel Mug', blurb: 'Narrow, deep and vacuum insulated. Nobody does this.',
+    W: 150, D: 330, wall: 18, base: 22, tau: 4200, damp: 0.7, swing: 1.35,
+    body: '#a3adb5', inner: '#5e676e', trim: '#2f363b', stats: { heat: 5, width: 1, depth: 5 }, diff: 'Silly' },
+];
+
+let DPR = 1, CW = 0, CH = 0, S = 1, WW = 600, WH = 900;
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  CW = window.innerWidth; CH = window.innerHeight;
+  cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
+  S = Math.min(CW / 600, CH / 900);
+  WW = CW / S; WH = CH / S;
+}
+addEventListener('resize', resize);
+resize();
+
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = v => clamp(Math.round(v * (1 + amt)), 0, 255);
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+
+/* ---------------- audio ---------------- */
+const AU = { ctx: null, master: null, pourG: null, pourF: null, noise: null, muted: false };
+try { AU.muted = localStorage.getItem('ijumh-muted') === '1'; } catch (e) {}
+function audioInit() {
+  if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try {
+    const c = new AC(); AU.ctx = c;
+    AU.master = c.createGain(); AU.master.gain.value = AU.muted ? 0 : 0.9; AU.master.connect(c.destination);
+    const len = (c.sampleRate * 1.5) | 0, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    AU.noise = buf;
+    const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 700; f.Q.value = 0.8;
+    const g = c.createGain(); g.gain.value = 0;
+    src.connect(f); f.connect(g); g.connect(AU.master); src.start();
+    AU.pourG = g; AU.pourF = f;
+  } catch (e) { AU.ctx = null; }
+}
+function tone(f0, dur, type, vol, f1) {
+  const c = AU.ctx; if (!c) return;
+  const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(f0, t);
+  if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(AU.master); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, type, freq, vol) {
+  const c = AU.ctx; if (!c) return;
+  const t = c.currentTime, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = AU.noise; f.type = type; f.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(AU.master); s.start(t, Math.random()); s.stop(t + dur + 0.02);
+}
+const sfx = {
+  plop() { tone(380, 0.22, 'sine', 0.35, 80); },
+  bloop() { tone(240, 0.14, 'sine', 0.25, 720); },
+  tap() { tone(1800, 0.09, 'triangle', 0.16, 1200); tone(2700, 0.05, 'sine', 0.07); },
+  sizzle() { noise(0.6, 'highpass', 3500, 0.35); },
+  ow() { tone(720, 0.3, 'sawtooth', 0.07, 240); },
+  splash() { noise(0.4, 'bandpass', 900, 0.45); },
+  pinch() { tone(990, 0.08, 'triangle', 0.2, 1320); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.25, 'triangle', 0.18), i * 90)); },
+  fail() { [392, 330, 262].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'square', 0.06), i * 170)); },
+  pour(p) {
+    if (!AU.pourG) return;
+    const t = AU.ctx.currentTime;
+    AU.pourG.gain.setTargetAtTime(p * 0.22, t, 0.05);
+    // Pitch climbs as the mug fills, like the real thing.
+    AU.pourF.frequency.setTargetAtTime(450 + p * 500 + (G ? G.L / G.mug.D : 0) * 1100, t, 0.1);
+  },
+};
+function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+
+/* ---------------- state ---------------- */
+let G = null, GE = null;
+
+function newState(m, phase) {
+  return {
+    mug: m, phase, t: 0, teaT: 0, wet: false, T: 20, e: 0, L: 0, s: 0, sv: 0, ripA: 0,
+    ox: 0, oxV: 0, oxT: 0, oxA: 0,
+    pain: 0, burns: 0, spills: 0, spillVol: 0, spilling: false, spillT: 0, misses: 0,
+    milk: false, milkT: -9, puddleWarned: false, steamAcc: 0, flash: 0, shake: 0,
+    bag: { x: 0, y: 0, a: Math.PI / 4, vx: 0, vy: 0, w: 0, soak: 0, f: 0, state: 'held', seed: Math.random() * 10, settle: 0, inT: 0, tableT: 0, attach: 0, phi: 0, phiV: 0 },
+    hand: { ph: rand(0, 6), x: 0, tipH: m.D + 210, up: 0 },
+    kettle: { aim: null, p: 0, holding: false, pid: null, leave: 0 },
+    finger: null, drag: null, parts: [], pops: [], puddles: [],
+    bubbleT: rand(5, 9), nextDrip: 0, hintUntil: 0,
+    done: false, result: null, endAt: 0, shown: false, Tgrab: 0, Lgrab: 0, grabTea: 0,
+  };
+}
+function demoState() {
+  const m = MUGS[0], g = newState(m, 'demo');
+  g.L = m.D * 0.78; g.wet = true; g.T = 92; g.e = 0.5;
+  Object.assign(g.bag, { state: 'mug', x: -20, y: g.L - 40, a: 0.3, soak: 1 });
+  return g;
+}
+
+function geo() {
+  const m = G.mug, counterY = WH - Math.max(150, WH * 0.2);
+  const fy = counterY - m.base - (m.saucer ? 14 : 0);
+  return { cx: WW / 2 + G.ox, fy, rimY: fy - m.D, counterY };
+}
+
+function ripple(x) { return G.ripA * (0.6 * Math.sin(x * 0.075 - G.t * 9) + 0.4 * Math.sin(x * 0.13 + G.t * 6.1)); }
+function surf(x) { return G.L <= 0 ? -1 : G.L + G.s * x + ripple(x); }
+function tempFactor() { return G.wet ? clamp((G.T - 42) / 45, 0, 1.3) : 0; }
+function milkMix() { return G.milk ? clamp((G.t - G.milkT) / 1.5, 0, 1) : 0; }
+
+function corners(b) {
+  const o = [];
+  for (let i = 0; i < 4; i++) { const t = b.a + Math.PI / 4 + i * Math.PI / 2; o.push({ rx: BR * Math.cos(t), ry: BR * Math.sin(t) }); }
+  return o;
+}
+function extent(b) {
+  let top = -1e9, bot = 1e9, half = 0;
+  for (const c of corners(b)) { top = Math.max(top, c.ry); bot = Math.min(bot, c.ry); half = Math.max(half, Math.abs(c.rx)); }
+  return { top, bot, half };
+}
+function distToBag(px, ph) {
+  const b = G.bag, dx = px - b.x, dy = ph - b.y, ca = Math.cos(b.a), sa = Math.sin(b.a);
+  const lx = dx * ca + dy * sa, ly = -dx * sa + dy * ca;
+  const qx = Math.abs(lx) - B / 2, qy = Math.abs(ly) - B / 2;
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0);
+}
+function exposure() {
+  const b = G.bag; let best = -1e9;
+  for (const c of corners(b)) best = Math.max(best, b.y + c.ry - surf(b.x + c.rx));
+  return best;
+}
+
+const TEA_STOPS = [[0, [205, 222, 228, 0.3]], [0.15, [222, 176, 98, 0.6]], [0.4, [170, 94, 36, 0.84]], [0.7, [98, 46, 18, 0.92]], [1, [52, 24, 10, 0.95]]];
+function teaRGBA(e, mk) {
+  let a = TEA_STOPS[0], b = TEA_STOPS[TEA_STOPS.length - 1];
+  for (let i = 0; i < TEA_STOPS.length - 1; i++) if (e >= TEA_STOPS[i][0] && e <= TEA_STOPS[i + 1][0]) { a = TEA_STOPS[i]; b = TEA_STOPS[i + 1]; break; }
+  const t = clamp((e - a[0]) / ((b[0] - a[0]) || 1), 0, 1);
+  let c = a[1].map((v, j) => lerp(v, b[1][j], t));
+  if (mk > 0) {
+    const milky = [lerp(c[0], 236, 0.55), lerp(c[1], 206, 0.55), lerp(c[2], 170, 0.55)];
+    c = [lerp(c[0], milky[0], mk), lerp(c[1], milky[1], mk), lerp(c[2], milky[2], mk), lerp(c[3], 0.97, mk)];
+  }
+  return [c[0] | 0, c[1] | 0, c[2] | 0, c[3]];
+}
+
+function gradeOf(e) {
+  if (e < 0.22) return { k: 'dish', name: 'Dishwater' };
+  if (e < 0.42) return { k: 'weak', name: 'Weak' };
+  if (e <= 0.66) return { k: 'perfect', name: 'Perfect' };
+  if (e <= 0.8) return { k: 'strong', name: 'Strong' };
+  return { k: 'stewed', name: 'Stewed' };
+}
+function painWord(p) {
+  if (p <= 0) return 'Pristine';
+  if (p < 25) return 'Tingly';
+  if (p < 50) return 'Throbbing';
+  if (p < 75) return 'Blistered';
+  return 'Medium rare';
+}
+function fmtTime(s) { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+
+/* ---------------- effects ---------------- */
+function pop(text, col, size, x, y) {
+  const n = G.pops.length;
+  G.pops.push({ text, col: col || PAPER, size: size || 34, x: x ?? GE.cx, y: (y ?? GE.rimY - 70) - n * 44, vy: -30, life: 1.5, max: 1.5 });
+}
+function addPuddle(x, amt, col) {
+  for (const p of G.puddles) if (Math.abs(p.x - x) < p.r + 12) { p.r = Math.min(110, Math.sqrt(p.r * p.r + amt * 40)); return; }
+  if (G.puddles.length < 30) G.puddles.push({ x, r: 6, col });
+}
+function splashAt(x, y, n, col, up) {
+  for (let i = 0; i < n; i++) G.parts.push({ kind: 'drop', x: x + rand(-6, 6), y, vx: rand(-140, 140), vy: -rand(up * 0.4, up), r: rand(2, 4.5), life: 2, max: 2, col });
+}
+function liquidCss() { const [r, g, b] = teaRGBA(G.e, milkMix()); return `rgb(${r},${g},${b})`; }
+
+/* ---------------- physics ---------------- */
+function contact(b, rx, ry, nx, ny, e, mu) {
+  const vcx = b.vx - b.w * ry, vcy = b.vy + b.w * rx;
+  const vn = vcx * nx + vcy * ny;
+  if (vn >= 0) return;
+  const rn = rx * ny - ry * nx;
+  const j = -(1 + e) * vn / (1 + rn * rn / IB);
+  b.vx += j * nx; b.vy += j * ny; b.w += rn * j / IB;
+  const tx = -ny, ty = nx;
+  const vt = (b.vx - b.w * ry) * tx + (b.vy + b.w * rx) * ty;
+  const rt = rx * ty - ry * tx;
+  const jt = clamp(-vt / (1 + rt * rt / IB), -mu * j, mu * j);
+  b.vx += jt * tx; b.vy += jt * ty; b.w += rt * jt / IB;
+}
+
+function stepBag(dt) {
+  const b = G.bag, m = G.mug, hw = m.W / 2;
+  if (b.state !== 'mug') return;
+  let cs = corners(b), top = -1e9, bot = 1e9;
+  for (const c of cs) { top = Math.max(top, c.ry); bot = Math.min(bot, c.ry); }
+  let f = 0;
+  if (G.L > 0.5) f = clamp((surf(b.x) - (b.y + bot)) / (top - bot), 0, 1);
+  b.f = f;
+  if (f > 0.02) {
+    // A dry bag rides high; once soaked it hovers just under the surface.
+    const yT = surf(b.x) - B / 2 - lerp(-0.45 * B, 0.1 * B, b.soak);
+    b.vy += (KY * (yT - b.y) - CY * b.vy) * dt;
+    const u = G.sv * m.W * 0.35;
+    b.vx += (u - b.vx) * Math.min(1, 2.5 * f * dt) + Math.sin(G.t * 0.7 + b.seed) * 8 * dt * f;
+    b.w += (-KA * Math.sin(4 * (b.a - Math.atan(G.s))) - CA * b.w) * f * dt;
+  } else {
+    b.vy -= GRAV * dt;
+    b.w *= Math.exp(-dt * 0.5);
+  }
+  b.vx -= G.oxA * dt * 0.08;
+  b.w = clamp(b.w, -22, 22);
+  b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
+
+  const e = f > 0.02 ? 0.05 : 0.25, mu = 0.5;
+  for (let it = 0; it < 2; it++) {
+    cs = corners(b);
+    let mn = 1e9; for (const c of cs) mn = Math.min(mn, c.ry + b.y);
+    if (mn < 0) { b.y -= mn; for (const c of cs) if (c.ry + b.y < 0.8) contact(b, c.rx, c.ry, 0, 1, e, mu); }
+    let lx = 1e9; for (const c of cs) lx = Math.min(lx, c.rx + b.x);
+    if (lx < -hw) { b.x += Math.min(-hw - lx, 8); for (const c of cs) if (c.rx + b.x < -hw + 0.8) contact(b, c.rx, c.ry, 1, 0, e, mu); }
+    let rx = -1e9; for (const c of cs) rx = Math.max(rx, c.rx + b.x);
+    if (rx > hw) { b.x -= Math.min(rx - hw, 8); for (const c of cs) if (c.rx + b.x > hw - 0.8) contact(b, c.rx, c.ry, -1, 0, e, mu); }
+  }
+  if (b.y > m.D + 200) { b.y = m.D + 200; b.vy = Math.min(0, b.vy); }
+}
+
+function stepSlosh(dt) {
+  const m = G.mug;
+  if (G.L < 1) { G.s *= 0.9; G.sv *= 0.9; return; }
+  const om2 = GRAV * Math.PI / m.W * Math.tanh(Math.PI * Math.max(G.L, 10) / m.W) * 0.9;
+  G.sv += (-om2 * G.s - m.damp * G.sv - clamp(G.oxA, -7000, 7000) * 0.0045) * dt;
+  G.s += G.sv * dt;
+  if (Math.abs(G.s) > 1) { G.s = Math.sign(G.s); G.sv *= -0.3; }
+  const edge = G.L + Math.abs(G.s) * m.W / 2;
+  if (edge > m.D) {
+    const dL = Math.min(G.L, (edge - m.D) * 3 * dt);
+    G.L -= dL; G.spillVol += dL;
+    const sg = Math.sign(G.s) || 1;
+    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
+    G.spillT = G.t;
+    if (Math.random() < 0.7) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 4, vx: sg * rand(40, 170), vy: -rand(40, 200), r: rand(2.5, 5), life: 2, max: 2, col: liquidCss() });
+  } else if (edge < m.D - 4 && G.t - G.spillT > 0.4) G.spilling = false;
+  G.ripA *= Math.exp(-dt * 1.4);
+}
+
+/* ---------------- phases ---------------- */
+function updateDrop(dt) {
+  const b = G.bag, m = G.mug, h = G.hand;
+  const A = Math.min(m.W / 2 + 110, WW / 2 - 70), sp = 1.7 * m.swing;
+  h.ph += dt * sp;
+  h.x = A * Math.sin(h.ph);
+  const hvx = A * sp * Math.cos(h.ph);
+  h.up = b.state === 'held' ? Math.max(0, h.up - dt * 1200) : Math.min(2000, h.up + dt * 800);
+
+  if (b.state === 'held') {
+    b.a = Math.PI / 4 - hvx * 0.0006;
+    b.x = h.x; b.y = h.tipH + h.up - BR; b.vx = hvx; b.vy = 0; b.w = 0;
+  } else if (b.state === 'falling') {
+    b.vy -= GRAV * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
+    const ex = extent(b);
+    if (b.y + ex.bot <= m.D) {
+      const ax = Math.abs(b.x), sg = Math.sign(b.x) || 1;
+      if (ax < m.W / 2 - 12) {
+        b.state = 'mug'; b.inT = G.t;
+        if (ax + ex.half > m.W / 2) { b.w -= sg * 5; sfx.tap(); }
+      } else if (ax < m.W / 2 + m.wall * 0.6) {
+        b.state = 'mug'; b.inT = G.t; b.w -= sg * 7; b.vx = -sg * Math.abs(b.vx) * 0.3;
+        pop('Rim shot!', MUSTARD, 34); sfx.tap();
+      } else {
+        b.state = 'out'; b.vx = sg * Math.max(60, Math.abs(b.vx) * 0.6); b.w += sg * 5;
+        if (ax < m.W / 2 + m.wall + ex.half) sfx.tap();
+      }
+    }
+  } else if (b.state === 'out') {
+    b.vy -= GRAV * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
+    const ex = extent(b), minX = m.W / 2 + m.wall + ex.half;
+    if (Math.abs(b.x) < minX && b.y + ex.bot < m.D) { const sg = Math.sign(b.x) || 1; b.x = sg * minX; b.vx = sg * Math.abs(b.vx) * 0.4; }
+    const hC = -(m.base + (m.saucer ? 14 : 0));
+    if (b.y + ex.bot <= hC) {
+      b.a = 0; b.y = hC + B / 2; b.state = 'table'; b.vx = b.vy = b.w = 0; b.tableT = G.t;
+      G.misses++; sfx.plop(); pop(pick(['Missed!', 'On the counter!', 'Splat.']), TOMATO, 38);
+    }
+  } else if (b.state === 'table') {
+    if (G.t - b.tableT > 1.4) { b.state = 'held'; h.up = 600; pop('Five-second rule. Again.', PAPER, 28); }
+  } else if (b.state === 'mug') {
+    const spd = Math.hypot(b.vx, b.vy) + Math.abs(b.w) * 30;
+    b.settle = spd < 25 ? b.settle + dt : 0;
+    if (b.settle > 0.35 || G.t - b.inT > 2.5) { sfx.plop(); pop('Plop.', PAPER, 30); setPhase('pour'); }
+  }
+}
+
+function addWater(dv, xr) {
+  const m = G.mug, b = G.bag;
+  if (!G.wet) { G.wet = true; G.T = 97; }
+  G.L += dv;
+  G.ripA = Math.min(6, G.ripA + dv * 0.6);
+  G.sv += rand(-1, 1) * dv * 0.004;
+  if (b.state === 'mug') {
+    const ex = extent(b), hs = surf(b.x);
+    if (Math.abs(xr - b.x) < ex.half * 0.9 && b.y + ex.top > hs - 4) {
+      b.soak = Math.min(1, b.soak + dv * 0.006);
+      b.vy -= dv * 7;
+      b.w += (xr - b.x) * dv * 0.0008;
+    } else if (Math.abs(xr - b.x) < ex.half + 40) b.vx += Math.sign(b.x - xr) * dv * 3;
+  }
+  if (Math.random() < 0.4) G.parts.push({ kind: 'splash', x: GE.cx + xr + rand(-5, 5), y: GE.fy - Math.max(0, surf(xr)), vx: rand(-80, 80), vy: -rand(80, 220), r: rand(1.5, 3), life: 1, max: 1 });
+  if (G.L > m.D) overflow(G.L - m.D);
+}
+function overflow(ex) {
+  const m = G.mug;
+  G.L = m.D; G.spillVol += ex; G.spillT = G.t;
+  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); pop('Overflow!', TOMATO, 36); }
+  for (const sg of [-1, 1]) if (Math.random() < 0.5) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 2, vx: sg * rand(30, 110), vy: -rand(20, 90), r: rand(2.5, 4.5), life: 2, max: 2, col: liquidCss() });
+}
+function splashCounter(dv, wx) {
+  addPuddle(wx, dv * 0.4, 'rgba(205,222,228,0.75)');
+  if (!G.puddleWarned) { G.puddleWarned = true; G.spills++; pop('Oi! On the counter!', TOMATO, 32); sfx.splash(); }
+  if (Math.random() < 0.5) G.parts.push({ kind: 'splash', x: wx, y: GE.counterY - 2, vx: rand(-120, 120), vy: -rand(60, 180), r: rand(1.5, 3), life: 1, max: 1 });
+}
+
+function updatePour(dt) {
+  const K = G.kettle, m = G.mug;
+  if (K.aim == null) K.aim = GE.cx + m.W * 0.25;
+  K.p = K.holding ? Math.min(1, K.p + dt * 1.6) : Math.max(0, K.p - dt * 3.5);
+  sfx.pour(K.p);
+  if (K.p > 0.04) {
+    const xr = K.aim - GE.cx, ax = Math.abs(xr), q = K.p * m.D * 0.3 * dt;
+    if (ax < m.W / 2 - 3) addWater(q, xr);
+    else if (ax < m.W / 2 + m.wall) { addWater(q * 0.5, Math.sign(xr) * (m.W / 2 - 6)); splashCounter(q * 0.5, K.aim + Math.sign(xr) * (m.wall + 10)); }
+    else splashCounter(q, K.aim);
+  }
+  $('btnDone').disabled = G.L < m.D * 0.2;
+}
+
+/* ---------------- fingers ---------------- */
+function stepFinger(dt) {
+  const F = G.finger; if (!F) return;
+  const m = G.mug;
+  if (F.grabbed) { liftStep(dt); return; }
+  if (F.flinch || !F.active) { F.h += (F.flinch ? 1500 : 1000) * dt; if (F.h > m.D + 700) G.finger = null; return; }
+  const k = 1 - Math.exp(-dt * 20);
+  let dx = (F.tx - F.x) * k, dh = (F.th - F.h) * k;
+  const dl = Math.hypot(dx, dh), mx = 1800 * dt;
+  if (dl > mx) { dx *= mx / dl; dh *= mx / dl; }
+  const n = Math.max(1, Math.ceil(Math.hypot(dx, dh) / 4));
+  for (let i = 0; i < n; i++) { F.x += dx / n; F.h += dh / n; if (checkFinger()) return; }
+}
+
+function checkFinger() {
+  const F = G.finger, m = G.mug, b = G.bag, rf = 12;
+  if (F.h < m.D + rf) F.x = clamp(F.x, -m.W / 2 + rf, m.W / 2 - rf);
+  if (F.h < rf) F.h = rf;
+  const tf = tempFactor();
+  const hs = G.L > 0.5 ? surf(F.x) : -1e9;
+  if (b.state === 'mug' && distToBag(F.x, F.h) <= rf) {
+    const under = F.h < hs + 2;
+    if (tf < 0.15 || (exposure() >= 5 && !under)) { grab(); return true; }
+    if (!under && G.t - F.slipT > 0.6) { F.slipT = G.t; pop(pick(['Too slippery!', 'Not enough corner!', 'It sank!']), PAPER, 28); b.vy -= 120; }
+  }
+  const sub = hs - (F.h - rf * 0.6);
+  if (sub > 0) {
+    if (tf >= 0.15) { burn(sub, tf); F.flinch = true; return true; }
+    if (!F.lukeWarned) { F.lukeWarned = true; pop('Lukewarm. Grim.', PAPER, 28); G.ripA = Math.min(6, G.ripA + 2); }
+  }
+  return false;
+}
+
+function burn(sub, tf) {
+  const F = G.finger;
+  const amt = clamp((14 + sub * 0.9) * tf, 2, 45);
+  G.pain = Math.min(100, G.pain + amt);
+  G.burns++;
+  G.shake = REDUCED ? 0 : 12; G.flash = 1;
+  G.ripA = Math.min(7, G.ripA + 3);
+  sfx.sizzle(); sfx.ow(); vibrate(90);
+  splashAt(GE.cx + F.x, GE.fy - surf(F.x), 6, liquidCss(), 260);
+  if (G.pain >= 100) { pop('MEDIUM RARE', TOMATO, 50); finish('fail'); }
+  else pop(pick(['OW!', 'TSSS!', 'AAARGH!', 'HOT HOT HOT', 'WHY?!', 'MY FINGER!']), TOMATO, 44);
+}
+
+function grab() {
+  const F = G.finger, b = G.bag, cs = corners(b);
+  let bi = 0, bd = 1e9;
+  cs.forEach((c, i) => { const d = Math.hypot(b.x + c.rx - F.x, b.y + c.ry - F.h); if (d < bd) { bd = d; bi = i; } });
+  b.attach = bi; b.phi = b.a + Math.PI / 4 + bi * Math.PI / 2; b.phiV = b.w * 0.5; b.state = 'lifted';
+  F.x = b.x + cs[bi].rx; F.h = b.y + cs[bi].ry + 6; F.grabbed = true; F.liftV = 120;
+  sfx.pinch();
+  pop(pick(['Got it!', 'Pinched!', 'Yoink!']), MUSTARD, 42);
+  finish('out');
+}
+
+function liftStep(dt) {
+  const F = G.finger, b = G.bag, m = G.mug;
+  F.liftV = Math.min(650, F.liftV + 700 * dt);
+  F.h += F.liftV * dt;
+  F.x += (m.W * 0.1 - F.x) * dt * 0.8;
+  b.phiV += (28 * Math.cos(b.phi) - 3 * b.phiV) * dt;
+  b.phi += b.phiV * dt;
+  b.a = b.phi - Math.PI / 4 - b.attach * Math.PI / 2;
+  b.x = F.x - BR * Math.cos(b.phi);
+  b.y = (F.h - 6) - BR * Math.sin(b.phi);
+  if (b.y < m.D + 300 && G.t > G.nextDrip) {
+    G.nextDrip = G.t + rand(0.05, 0.14);
+    let lc = null; for (const c of corners(b)) if (!lc || c.ry < lc.ry) lc = c;
+    G.parts.push({ kind: 'drop', x: GE.cx + b.x + lc.rx, y: GE.fy - (b.y + lc.ry), vx: rand(-10, 10), vy: 0, r: rand(2.5, 4.5), life: 2, max: 2, col: liquidCss() });
+  }
+}
+
+function tapMug() {
+  const b = G.bag;
+  sfx.tap();
+  G.ripA = Math.min(6, G.ripA + 3);
+  if (b.state === 'mug' && b.f > 0.02) { b.vy += 45 * b.f + 15; b.w += rand(-2, 2); }
+  pop('tink', CREAM, 22, GE.cx + rand(-60, 60), GE.rimY - 20);
+}
+function spin(ang) {
+  const b = G.bag;
+  if (b.state === 'mug') b.w = clamp(b.w - ang * 1.5 * (b.f > 0.02 ? 1 : 0.3), -20, 20);
+  G.sv += ang * 0.04;
+}
+
+function addMilk() {
+  if (G.milk || G.phase !== 'steep') return;
+  const m = G.mug, add = m.D * 0.12;
+  G.milk = true; G.milkT = G.t;
+  G.T = (G.T * G.L + 6 * add) / (G.L + add);
+  G.L += add;
+  if (G.L > m.D) overflow(G.L - m.D);
+  G.ripA = 6; G.sv += rand(-0.3, 0.3);
+  sfx.splash();
+  pop('Milk in. With the bag?!', CREAM, 30);
+  setPhaseUI();
+}
+
+function finish(kind) {
+  if (G.done) return;
+  G.done = true; G.result = kind;
+  G.Tgrab = G.T; G.Lgrab = G.L; G.grabTea = G.teaT;
+  G.phase = kind === 'fail' ? 'fail' : 'out';
+  G.endAt = G.t + (kind === 'spoon' ? 1.6 : 1.4);
+  if (kind === 'spoon') { G.bag.state = 'spoon'; pop('Spoon deployed. Shame.', PAPER, 32); }
+  if (kind === 'out') sfx.win();
+  if (kind === 'fail') { sfx.fail(); if (G.finger) G.finger.flinch = true; }
+  sfx.pour(0);
+  setPhaseUI();
+}
+
+/* ---------------- main update ---------------- */
+function update(dt) {
+  G.t += dt;
+  const m = G.mug, b = G.bag;
+
+  const acc = 220 * (G.oxT - G.ox) - 22 * G.oxV;
+  G.oxV += acc * dt; G.ox += G.oxV * dt; G.oxA = acc;
+
+  if (G.phase === 'demo') {
+    if (Math.random() < dt * 0.5) G.sv += rand(-0.5, 0.5);
+  } else if (G.wet && !G.done) {
+    const dT = dt * TS;
+    G.teaT += dT;
+    G.T = 20 + (G.T - 20) * Math.exp(-dT / m.tau);
+    const fb = b.state === 'mug' ? Math.max(0.15, b.f) : 0;
+    G.e += (1 - G.e) * dT / 200 * clamp((G.T - 20) / 75, 0, 1.1) * fb;
+  }
+
+  if (G.phase === 'drop') updateDrop(dt);
+  if (G.phase === 'pour') updatePour(dt);
+  else G.kettle.p = Math.max(0, G.kettle.p - dt * 3.5);
+  if (G.phase !== 'pour' && G.phase !== 'drop' && G.phase !== 'demo' && G.kettle.leave < 1) G.kettle.leave += dt * 1.5;
+
+  stepSlosh(dt);
+  for (let i = 0; i < 3; i++) stepBag(dt / 3);
+
+  if ((G.phase === 'pour' || G.phase === 'steep') && b.state === 'mug' && b.f > 0.05) b.soak = Math.min(1, b.soak + dt * 0.12 * b.f);
+  if (G.phase === 'steep') {
+    G.bubbleT -= dt;
+    if (G.bubbleT <= 0) {
+      G.bubbleT = rand(5, 10);
+      if (b.state === 'mug' && b.f > 0.5) {
+        b.vy += 110; b.w += rand(-1.5, 1.5); sfx.bloop();
+        for (let i = 0; i < 4; i++) G.parts.push({ kind: 'bubble', x: GE.cx + b.x + rand(-20, 20), y: GE.fy - b.y, vx: rand(-10, 10), vy: -rand(60, 120), r: rand(3, 6), life: 0.6, max: 0.6 });
+      }
+    }
+  }
+  if (b.state === 'spoon') { b.y += 300 * dt; b.a *= Math.exp(-dt * 4); }
+
+  stepFinger(dt);
+
+  if (G.wet && G.L > 2) {
+    const heat = clamp((G.T - 40) / 55, 0, 1);
+    G.steamAcc += dt * heat * 16;
+    while (G.steamAcc > 1) {
+      G.steamAcc--;
+      const x = rand(-m.W / 2 + 12, m.W / 2 - 12), life = rand(1.6, 2.6);
+      G.parts.push({ kind: 'steam', x: GE.cx + x, y: GE.fy - Math.min(m.D, surf(x)), vx: 0, vy: -rand(40, 75), r: rand(5, 10), life, max: life, seed: rand(0, 9), heat });
+    }
+  }
+
+  for (const p of G.parts) {
+    p.life -= dt;
+    if (p.kind === 'steam') { p.x += Math.sin(G.t * 2 + p.seed) * 14 * dt; p.y += p.vy * dt; p.r += dt * 12; continue; }
+    if (p.kind === 'bubble') { p.x += p.vx * dt; p.y += p.vy * dt; continue; }
+    p.vy += GRAV * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    const rx = p.x - GE.cx;
+    if (Math.abs(rx) < m.W / 2 && p.vy > 0 && p.y > GE.fy - Math.max(0, surf(rx)) && p.y < GE.fy + 2 && p.y > GE.rimY) { p.life = 0; G.ripA = Math.min(6, G.ripA + 0.3); }
+    else if (p.y >= GE.counterY && Math.abs(rx) > m.W / 2 + m.wall - 2) { p.life = 0; if (p.kind === 'drop') addPuddle(p.x, 0.8, p.col); }
+    else if (p.y > WH) p.life = 0;
+  }
+  G.parts = G.parts.filter(p => p.life > 0);
+  for (const p of G.pops) { p.y += p.vy * dt; p.life -= dt; }
+  G.pops = G.pops.filter(p => p.life > 0);
+  G.shake *= Math.exp(-dt * 10);
+  G.flash = Math.max(0, G.flash - dt * 2.5);
+
+  if (G.hintUntil && G.t > G.hintUntil) { G.hintUntil = 0; $('hint').hidden = true; }
+  if (G.endAt && !G.shown && G.t >= G.endAt) { G.shown = true; showResults(); }
+}
+
+/* ---------------- drawing ---------------- */
+let tilePat = null;
+function makeTile() {
+  const t = document.createElement('canvas'); t.width = t.height = 80;
+  const c = t.getContext('2d');
+  c.fillStyle = '#22574f'; c.fillRect(0, 0, 80, 80);
+  c.fillStyle = TILE; c.fillRect(3, 3, 74, 74);
+  const g = c.createLinearGradient(0, 0, 80, 80);
+  g.addColorStop(0, 'rgba(255,255,255,.12)'); g.addColorStop(1, 'rgba(0,0,0,.06)');
+  c.fillStyle = g; c.fillRect(3, 3, 74, 74);
+  tilePat = ctx.createPattern(t, 'repeat');
+}
+
+function drawBackground() {
+  if (!tilePat) makeTile();
+  const cy = GE.counterY;
+  ctx.fillStyle = tilePat; ctx.fillRect(0, 0, WW, cy);
+  const g = ctx.createLinearGradient(0, 0, 0, cy);
+  g.addColorStop(0, 'rgba(10,30,28,.4)'); g.addColorStop(0.65, 'rgba(255,240,200,.05)'); g.addColorStop(1, 'rgba(10,20,18,.25)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, WW, cy);
+  ctx.fillStyle = '#f5c04a'; ctx.fillRect(0, cy, WW, 18);
+  ctx.fillStyle = MUSTARD; ctx.fillRect(0, cy + 18, WW, WH - cy);
+  ctx.fillStyle = INK; ctx.fillRect(0, cy - 3, WW, 4); ctx.fillRect(0, cy + 17, WW, 3);
+  ctx.fillStyle = 'rgba(42,22,13,.13)';
+  const span = Math.max(40, WH - cy - 34);
+  for (let i = 0; i < 90; i++) ctx.fillRect((i * 97.31) % WW, cy + 26 + ((i * 53.7) % span), 3, 2);
+  ctx.fillStyle = 'rgba(42,22,13,.18)';
+  for (let x = (WW / 2) % 240 - 120; x < WW; x += 240) ctx.fillRect(x, cy + 40, 3, WH);
+}
+
+function uPath(c, m, cx, fy, cut) {
+  const L = cx - m.W / 2 - m.wall, R = cx + m.W / 2 + m.wall, T = fy - m.D, Bt = fy + m.base;
+  const r = m.id === 'teacup' ? 38 : m.id === 'travel' ? 14 : 22;
+  c.beginPath();
+  c.moveTo(L, T); c.lineTo(L, Bt - r); c.quadraticCurveTo(L, Bt, L + r, Bt);
+  c.lineTo(R - r, Bt); c.quadraticCurveTo(R, Bt, R, Bt - r); c.lineTo(R, T);
+  if (cut) {
+    const ixL = cx - m.W / 2, ixR = cx + m.W / 2, ir = 10;
+    c.lineTo(ixR, T); c.lineTo(ixR, fy - ir); c.quadraticCurveTo(ixR, fy, ixR - ir, fy);
+    c.lineTo(ixL + ir, fy); c.quadraticCurveTo(ixL, fy, ixL, fy - ir); c.lineTo(ixL, T);
+  }
+  c.closePath();
+}
+
+function drawMugBack(c, m, cx, fy, counterY) {
+  const R = cx + m.W / 2 + m.wall, T = fy - m.D, Bt = fy + m.base;
+  if (m.saucer) {
+    c.beginPath(); c.ellipse(cx, Bt + 7, m.W * 0.78, 10, 0, 0, Math.PI * 2);
+    c.fillStyle = m.body; c.fill(); c.lineWidth = 4; c.strokeStyle = INK; c.stroke();
+    c.beginPath(); c.ellipse(cx, Bt + 5, m.W * 0.7, 5, 0, 0, Math.PI * 2); c.lineWidth = 2; c.strokeStyle = m.trim; c.stroke();
+  }
+  if (m.id === 'travel') {
+    if (counterY != null) {
+      const lx = R + 46, ly = counterY;
+      c.fillStyle = m.trim; c.strokeStyle = INK; c.lineWidth = 4;
+      c.beginPath(); c.roundRect ? c.roundRect(lx, ly - 34, m.W + 2 * m.wall, 34, 8) : c.rect(lx, ly - 34, m.W + 2 * m.wall, 34); c.fill(); c.stroke();
+      c.fillStyle = '#4a545a'; c.fillRect(lx + 20, ly - 44, 40, 10); c.strokeRect(lx + 20, ly - 44, 40, 10);
+    }
+    return;
+  }
+  let hy, hr, hry, ht;
+  if (m.id === 'teacup') { hy = T + m.D * 0.42; hr = 30; hry = 26; ht = 11; }
+  else if (m.id === 'pint') { hy = T + m.D * 0.48; hr = 60; hry = m.D * 0.3; ht = 28; }
+  else { hy = T + m.D * 0.46; hr = 50; hry = m.D * 0.28; ht = 23; }
+  c.lineCap = 'round';
+  c.beginPath(); c.ellipse(R - 4, hy, hr, hry, 0, -Math.PI / 2, Math.PI / 2);
+  c.strokeStyle = INK; c.lineWidth = ht + 8; c.stroke();
+  c.strokeStyle = m.body; c.lineWidth = ht; c.stroke();
+}
+
+function drawMugBody(c, m, cx, fy, cut) {
+  const L = cx - m.W / 2 - m.wall, R = cx + m.W / 2 + m.wall, T = fy - m.D, Bt = fy + m.base, BW = R - L;
+  uPath(c, m, cx, fy, cut);
+  c.fillStyle = m.body; c.fill();
+  c.save(); c.clip();
+  if (m.id === 'classic') {
+    c.fillStyle = m.trim; c.fillRect(L, T + 12, BW, 12); c.fillRect(L, Bt - 30, BW, 8);
+    if (!cut) {
+      c.fillStyle = INK; c.font = `22px ${DISPLAY}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText("WORLD'S", cx, T + m.D * 0.42); c.fillText('OKAYEST', cx, T + m.D * 0.42 + 26); c.fillText('BREW', cx, T + m.D * 0.42 + 52);
+    }
+  } else if (m.id === 'teacup') {
+    c.fillStyle = '#d7a93a'; c.fillRect(L, T, BW, 6);
+    for (let i = 0; i < 9; i++) {
+      const fx = L + 16 + i * (BW - 32) / 8, fyy = T + 30 + (i % 2) * 40;
+      c.fillStyle = i % 2 ? '#e58aa6' : m.trim;
+      for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5; c.beginPath(); c.arc(fx + Math.cos(a) * 6, fyy + Math.sin(a) * 6, 4.5, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(fx, fyy, 3.5, 0, Math.PI * 2); c.fill();
+    }
+  } else if (m.id === 'pint') {
+    const by = T + m.D * 0.38;
+    c.fillStyle = m.trim; c.fillRect(L, by, BW, 58); c.fillRect(L, T + 10, BW, 8);
+    if (!cut) { c.fillStyle = m.body; c.font = `34px ${DISPLAY}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('MONDAY', cx, by + 31); }
+  } else if (m.id === 'travel') {
+    const g = c.createLinearGradient(L, 0, R, 0);
+    g.addColorStop(0, '#7f8a92'); g.addColorStop(0.25, '#d9e0e4'); g.addColorStop(0.5, '#a3adb5'); g.addColorStop(0.8, '#e6ecef'); g.addColorStop(1, '#7f8a92');
+    c.fillStyle = g; c.fillRect(L, T, BW, Bt - T);
+    const gy = T + m.D * 0.45;
+    c.fillStyle = m.trim; c.fillRect(L, gy, BW, 80);
+    c.fillStyle = 'rgba(255,255,255,.12)';
+    for (let y = gy + 8; y < gy + 76; y += 12) c.fillRect(L, y, BW, 4);
+  }
+  c.restore();
+  if (m.id === 'teacup') { c.fillStyle = m.body; c.fillRect(L - 5, T - 2, m.wall + 5, 6); c.fillRect(R - m.wall, T - 2, m.wall + 5, 6); }
+  uPath(c, m, cx, fy, cut);
+  c.lineWidth = 5; c.lineJoin = 'round'; c.strokeStyle = INK; c.stroke();
+  if (m.id === 'classic') {
+    c.fillStyle = INK; c.beginPath(); c.moveTo(L + 4, T - 1); c.lineTo(L + 12, T + 7); c.lineTo(L + 16, T - 1); c.fill();
+  }
+}
+
+function drawCavity(m, cx, fy) {
+  const ix = cx - m.W / 2, iy = fy - m.D;
+  const g = ctx.createLinearGradient(ix, 0, ix + m.W, 0);
+  g.addColorStop(0, shade(m.inner.replace('rgb', ''), -0.2)); g.addColorStop(0.5, m.inner); g.addColorStop(1, shade(m.inner, -0.25));
+  ctx.fillStyle = g;
+  ctx.fillRect(ix, iy, m.W, m.D);
+}
+
+function drawBag(b) {
+  const x = GE.cx + b.x, y = GE.fy - b.y, s = B / 2, wet = clamp(b.soak, 0, 1);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-b.a);
+  const paper = [lerp(241, 172, wet * 0.85), lerp(233, 122, wet * 0.85), lerp(214, 72, wet * 0.85)].map(v => v | 0);
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-s, -s, B, B, 6) : ctx.rect(-s, -s, B, B);
+  ctx.fillStyle = `rgb(${paper})`; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(42,22,13,.35)';
+  ctx.strokeRect(-s + 7, -s + 7, B - 14, B - 14); ctx.setLineDash([]);
+  ctx.fillStyle = `rgb(${lerp(110, 58, wet) | 0},${lerp(70, 32, wet) | 0},${lerp(36, 14, wet) | 0})`;
+  for (const l of LEAVES) { ctx.beginPath(); ctx.ellipse(l[0], l[1], l[2], l[2] * 0.6, l[3], 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
+const LEAVES = Array.from({ length: 26 }, () => [rand(-B / 2 + 14, B / 2 - 14), rand(-B / 2 + 14, B / 2 - 14), rand(2, 4), rand(0, 3)]);
+
+function drawSpoon(b) {
+  const x = GE.cx + b.x, y = GE.fy - b.y + B / 2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = INK; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x + 30, y); ctx.lineTo(x + 260, y - 420); ctx.stroke();
+  ctx.strokeStyle = '#c7ced3'; ctx.lineWidth = 9; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x, y, 58, 16, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#c7ced3'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.stroke();
+}
+
+function drawLiquid() {
+  const m = G.mug, cx = GE.cx, fy = GE.fy, hw = m.W / 2;
+  const [r, g, b, a] = teaRGBA(G.e, milkMix());
+  const N = 28, pts = [];
+  let topY = 1e9;
+  for (let i = 0; i <= N; i++) { const x = -hw + m.W * i / N, y = fy - clamp(surf(x), 0, m.D + 3); pts.push([cx + x, y]); topY = Math.min(topY, y); }
+  ctx.beginPath(); ctx.moveTo(cx - hw, fy);
+  for (const p of pts) ctx.lineTo(p[0], p[1]);
+  ctx.lineTo(cx + hw, fy); ctx.closePath();
+  const gr = ctx.createLinearGradient(0, topY, 0, fy);
+  gr.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+  gr.addColorStop(1, `rgba(${r * 0.7 | 0},${g * 0.7 | 0},${b * 0.7 | 0},${Math.min(1, a + 0.05)})`);
+  ctx.fillStyle = gr; ctx.fill();
+  const mk = milkMix();
+  if (G.milk && mk < 1) {
+    ctx.fillStyle = `rgba(250,244,232,${(1 - mk) * 0.7})`;
+    for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(cx - hw * 0.3 + Math.sin(G.t * 3 + i) * hw * 0.5, fy - G.L * (0.2 + i * 0.12), 16 + mk * 30, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+  ctx.strokeStyle = 'rgba(255,240,215,.45)'; ctx.lineWidth = 3; ctx.stroke();
+}
+
+function capsule(x1, y1, x2, y2, w, col) {
+  ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+function drawHand(tx, ty, pinch, red) {
+  const dx = 0.2, dy = -0.98, px = 0.98, py = 0.2, fw = 30, r = fw / 2;
+  const at = d => [tx + dx * d, ty + dy * d];
+  const [sx, sy] = at(r), [ex, ey] = at(300);
+  capsule(at(420)[0], at(420)[1], at(1200)[0], at(1200)[1], 170, INK);
+  capsule(at(420)[0], at(420)[1], at(1200)[0], at(1200)[1], 162, MUSTARD);
+  const [cfx, cfy] = at(440);
+  ctx.strokeStyle = 'rgba(42,22,13,.35)'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(cfx - px * 80, cfy - py * 80); ctx.lineTo(cfx + px * 80, cfy + py * 80); ctx.stroke();
+  const [pmx, pmy] = at(350);
+  ctx.beginPath(); ctx.ellipse(pmx, pmy, 72, 92, Math.atan2(dy, dx) + Math.PI / 2, 0, Math.PI * 2);
+  ctx.fillStyle = SKIN; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke();
+  const thx = tx - 36 + pinch * 22, thy = ty - 30 + pinch * 18, tbx = tx + dx * 260 - 46, tby = ty + dy * 260;
+  capsule(thx, thy, tbx, tby, 40, INK); capsule(thx, thy, tbx, tby, 33, SKIN_SH);
+  capsule(sx, sy, ex, ey, fw + 7, INK); capsule(sx, sy, ex, ey, fw, SKIN);
+  if (red > 0) { const [rx, ry] = at(r + 10 + 60 * red); capsule(sx, sy, rx, ry, fw - 3, `rgba(226,72,42,${0.25 + red * 0.6})`); }
+  ctx.save(); const [nx, ny] = at(19); ctx.translate(nx, ny); ctx.rotate(Math.atan2(dy, dx) + Math.PI / 2);
+  ctx.beginPath(); ctx.ellipse(0, 0, 9, 11, 0, 0, Math.PI * 2); ctx.fillStyle = '#f9e2d2'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(42,22,13,.5)'; ctx.stroke(); ctx.restore();
+  ctx.strokeStyle = SKIN_SH; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (const d of [95, 180]) { const [cx2, cy2] = at(d); ctx.beginPath(); ctx.moveTo(cx2 - px * 8, cy2 - py * 8); ctx.lineTo(cx2 + px * 8, cy2 + py * 8); ctx.stroke(); }
+}
+
+function drawKettle() {
+  const K = G.kettle, th = -K.p * 0.6;
+  const tl = { x: -131, y: -25 };
+  const tr = { x: tl.x * Math.cos(th) - tl.y * Math.sin(th), y: tl.x * Math.sin(th) + tl.y * Math.cos(th) };
+  const aim = K.aim ?? GE.cx;
+  const bx = aim - tr.x, by = GE.rimY - 210 - K.leave * 1000;
+  if (G.phase === 'pour' && K.p > 0.04) {
+    const xr = aim - GE.cx, m = G.mug, sx = aim, sy = by + tr.y;
+    let ey;
+    if (Math.abs(xr) < m.W / 2) {
+      ey = GE.fy - Math.max(0, surf(xr));
+      const b = G.bag;
+      if (b.state === 'mug') { const ex = extent(b); if (Math.abs(xr - b.x) < ex.half * 0.9) ey = Math.min(ey, GE.fy - (b.y + ex.top - 6)); }
+    } else if (Math.abs(xr) < m.W / 2 + m.wall) ey = GE.rimY; else ey = GE.counterY;
+    const wob = Math.sin(G.t * 40) * 1.5;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(214,236,246,.85)'; ctx.lineWidth = 3 + K.p * 9;
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(sx - 6 + wob, (sy + ey) / 2, sx + wob, ey); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1.5 + K.p * 2;
+    ctx.beginPath(); ctx.moveTo(sx + 1, sy); ctx.quadraticCurveTo(sx - 4 + wob, (sy + ey) / 2, sx + 1 + wob, ey); ctx.stroke();
+  }
+  ctx.save(); ctx.translate(bx, by); ctx.rotate(th);
+  ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(-40, -62); ctx.bezierCurveTo(-40, -140, 40, -140, 40, -62);
+  ctx.strokeStyle = INK; ctx.lineWidth = 18; ctx.stroke(); ctx.strokeStyle = '#3d2a1f'; ctx.lineWidth = 10; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-60, -8); ctx.lineTo(-128, -33); ctx.lineTo(-135, -17); ctx.lineTo(-60, 30); ctx.closePath();
+  ctx.fillStyle = TOMATO; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-75, -60, 150, 120, 32) : ctx.rect(-75, -60, 150, 120);
+  ctx.fillStyle = TOMATO; ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(-36, -24, 14, 26, 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = INK; ctx.fillRect(-74, 36, 148, 8);
+  ctx.beginPath(); ctx.ellipse(0, -60, 48, 11, 0, 0, Math.PI * 2); ctx.fillStyle = '#f07a5e'; ctx.fill(); ctx.lineWidth = 4; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -74, 10, 0, Math.PI * 2); ctx.fillStyle = INK; ctx.fill();
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of G.parts) {
+    const k = p.life / p.max;
+    if (p.kind === 'steam') {
+      ctx.fillStyle = `rgba(255,250,240,${0.2 * p.heat * Math.min(1, k * 1.5) * Math.min(1, (1 - k) * 5)})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    } else if (p.kind === 'bubble') {
+      ctx.strokeStyle = `rgba(255,245,225,${k})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.fillStyle = p.kind === 'splash' ? 'rgba(220,238,246,.9)' : p.col;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+function drawPuddles() {
+  for (const p of G.puddles) {
+    ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.ellipse(p.x, GE.counterY + 8, p.r, Math.max(3, p.r * 0.22), 0, 0, Math.PI * 2); ctx.fill();
+  }
+}
+function drawPops() {
+  for (const p of G.pops) {
+    const k = 1 - p.life / p.max;
+    const sc = k < 0.12 ? lerp(0.4, 1.12, k / 0.12) : k < 0.2 ? lerp(1.12, 1, (k - 0.12) / 0.08) : 1;
+    ctx.save(); ctx.translate(clamp(p.x, 120, WW - 120), p.y); ctx.scale(sc, sc);
+    ctx.globalAlpha = p.life < 0.3 ? p.life / 0.3 : 1;
+    ctx.font = `${p.size}px ${DISPLAY}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    ctx.lineWidth = p.size * 0.24; ctx.strokeStyle = INK; ctx.strokeText(p.text, 0, 0);
+    ctx.fillStyle = p.col; ctx.fillText(p.text, 0, 0);
+    ctx.restore();
+  }
+}
+
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, CW, CH);
+  ctx.save(); ctx.scale(S, S);
+  if (G.shake > 0.3) ctx.translate(rand(-G.shake, G.shake), rand(-G.shake, G.shake));
+  drawBackground();
+  const m = G.mug, cx = GE.cx, fy = GE.fy, b = G.bag;
+
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  ctx.beginPath(); ctx.ellipse(cx, GE.counterY + 6, m.W / 2 + m.wall + 40, 12, 0, 0, Math.PI * 2); ctx.fill();
+  drawPuddles();
+  if (b.state === 'out' || b.state === 'table') drawBag(b);
+  drawMugBack(ctx, m, cx, fy, GE.counterY);
+  drawCavity(m, cx, fy);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(-2000, -4000, WW + 4000, 4000 + GE.rimY); ctx.rect(cx - m.W / 2, GE.rimY, m.W, m.D); ctx.clip();
+  if (b.state === 'spoon') drawSpoon(b);
+  if (b.state !== 'out' && b.state !== 'table') drawBag(b);
+  if (G.L > 0.3) drawLiquid();
+  ctx.restore();
+  drawMugBody(ctx, m, cx, fy, true);
+
+  if (G.phase === 'pour') {
+    const y = fy - m.D * 0.82;
+    ctx.setLineDash([8, 7]); ctx.strokeStyle = 'rgba(42,22,13,.55)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx - m.W / 2 + 4, y); ctx.lineTo(cx + m.W / 2 - 4, y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = `16px ${DISPLAY}`; ctx.fillStyle = 'rgba(42,22,13,.6)'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.fillText('FILL', cx + m.W / 2 - 8, y - 4);
+  }
+  if (G.milk && G.t - G.milkT < 0.7) {
+    ctx.strokeStyle = 'rgba(252,250,244,.95)'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    const mx = cx - m.W * 0.2;
+    ctx.beginPath(); ctx.moveTo(mx - 40, -50); ctx.quadraticCurveTo(mx - 10, GE.rimY - 100, mx, fy - surf(-m.W * 0.2)); ctx.stroke();
+  }
+
+  drawParticles();
+  if (G.phase === 'drop' || (G.hand.up > 0 && G.hand.up < 1500 && G.phase === 'pour')) {
+    drawHand(cx + G.hand.x, fy - G.hand.tipH - G.hand.up, b.state === 'held' ? 1 : 0, 0);
+  }
+  if (G.finger) { const F = G.finger; drawHand(cx + F.x, fy - F.h, F.grabbed ? 1 : 0.15, G.pain / 100); }
+  if (G.phase !== 'drop' && G.phase !== 'demo' && G.kettle.leave < 1) drawKettle();
+  drawPops();
+  ctx.restore();
+  if (G.flash > 0) { ctx.fillStyle = `rgba(224,72,42,${G.flash * 0.28})`; ctx.fillRect(0, 0, CW, CH); }
+}
+
+/* ---------------- HUD & UI ---------------- */
+const hudCache = {};
+function setText(id, v) { if (hudCache[id] !== v) { hudCache[id] = v; $(id).textContent = v; } }
+function setStyle(id, prop, v) { const k = id + prop; if (hudCache[k] !== v) { hudCache[k] = v; $(id).style[prop] = v; } }
+function hud() {
+  if (G.phase === 'demo') return;
+  setText('vTime', fmtTime(G.teaT));
+  setStyle('bBrew', 'width', (clamp(G.e / 0.9, 0, 1) * 100).toFixed(1) + '%');
+  setStyle('bBrew', 'background', G.wet ? liquidCss() : 'transparent');
+  setText('vGrade', G.wet ? gradeOf(G.e).name : 'Dry bag');
+  setText('vTemp', G.wet ? Math.round(G.T) + '°C' : '—');
+  const tf = tempFactor();
+  setText('vHeat', !G.wet ? 'Kettle on' : tf > 0.8 ? 'Scalding' : tf >= 0.15 ? 'Hot' : 'Bearable');
+  const cls = 'chip temp' + (!G.wet ? '' : tf > 0.8 ? ' hot' : tf >= 0.15 ? ' warm' : '');
+  if (hudCache.tempCls !== cls) { hudCache.tempCls = cls; $('chipTemp').className = cls; }
+  setStyle('bPain', 'width', G.pain.toFixed(1) + '%');
+  setText('vPain', painWord(G.pain));
+}
+
+const HINTS = {
+  drop: 'Tap to drop the tea bag in.',
+  pour: 'Hold to pour, drag to aim. Fill to the dotted line, then tap “That’ll do”.',
+  steep: 'Reach into the mug and pinch a corner that’s out of the tea. Swipe beside the mug to slosh it, draw circles to swirl, tap to make the bag bob.',
+};
+function showHint(text, secs) { $('hint').textContent = text; $('hint').hidden = false; G.hintUntil = secs ? G.t + secs : 0; }
+
+function setPhase(ph) { G.phase = ph; setPhaseUI(); }
+let spoonArmed = false, spoonTimer = 0;
+function setPhaseUI() {
+  const ph = G.phase;
+  $('hud').hidden = ph === 'demo';
+  $('controls').hidden = ph === 'demo';
+  $('btnDone').hidden = ph !== 'pour';
+  $('btnMilk').hidden = ph !== 'steep' || G.milk;
+  $('btnSpoon').hidden = ph !== 'steep';
+  spoonArmed = false; $('btnSpoon').textContent = 'Use a spoon'; $('btnSpoon').classList.remove('warn');
+  if (HINTS[ph]) showHint(HINTS[ph], ph === 'steep' ? 9 : 0);
+  else $('hint').hidden = true;
+  if (ph !== 'pour') sfx.pour(0);
+}
+
+function startGame(m) {
+  G = newState(m, 'drop'); GE = geo();
+  for (const k in hudCache) delete hudCache[k];
+  ['scrTitle', 'scrMugs', 'scrResult'].forEach(id => $(id).hidden = true);
+  setPhaseUI();
+  try { localStorage.setItem('ijumh-mug', m.id); } catch (e) {}
+}
+function goMugs() {
+  G = demoState(); GE = geo(); setPhaseUI();
+  ['scrTitle', 'scrResult'].forEach(id => $(id).hidden = true);
+  refreshBests();
+  $('scrMugs').hidden = false;
+}
+
+/* ---------------- scoring ---------------- */
+function brewPts(e) {
+  if (e < 0.42) return 45 * Math.pow(Math.max(0, (e - 0.05) / 0.37), 1.3);
+  if (e <= 0.66) return 45;
+  return 45 * Math.max(0, 1 - (e - 0.66) / 0.3);
+}
+function fillPts(r) {
+  if (r >= 0.65) return 15;
+  return 15 * Math.max(0, (r - 0.15) / 0.5);
+}
+function readBests() { try { return JSON.parse(localStorage.getItem('ijumh-best') || '{}') || {}; } catch (e) { return {}; } }
+function writeBests(o) { try { localStorage.setItem('ijumh-best', JSON.stringify(o)); } catch (e) {} }
+function refreshBests() {
+  const bests = readBests();
+  document.querySelectorAll('[data-best]').forEach(el => {
+    const b = bests[el.dataset.best];
+    el.textContent = b ? `Best: ${b.score} · ${b.title}` : '';
+  });
+}
+
+let lastShare = '';
+function showResults() {
+  const m = G.mug, kind = G.result, grade = gradeOf(G.e), pain = Math.round(G.pain);
+  let total = brewPts(G.e) + fillPts(G.Lgrab / m.D) + 30 * (1 - Math.min(100, G.pain) / 100);
+  if (G.spills === 0 && G.misses === 0 && G.pain === 0) total += 10;
+  total -= G.spills * 4 + G.misses * 3 + (G.milk ? 4 : 0) + (G.Tgrab < 50 ? 10 : 0);
+  if (kind === 'fail') total *= 0.2;
+  if (kind === 'spoon') total = 0;
+  total = Math.round(clamp(total, 0, 100));
+  const stars = clamp(Math.round(total / 20), 0, 5);
+
+  let title;
+  if (kind === 'spoon') title = 'Spoon Coward';
+  else if (kind === 'fail') title = 'Medium Rare';
+  else if (G.Tgrab < 50) title = 'The Long Wait';
+  else if (grade.k === 'perfect' && G.pain < 15 && G.spills === 0) title = 'Tea Whisperer';
+  else if (grade.k === 'stewed') title = 'Stew Master';
+  else if (grade.k === 'dish') title = 'Hot Water Enjoyer';
+  else if (G.pain >= 50) title = 'Pain Is Temporary';
+  else if (G.spills >= 3) title = 'Splash Zone';
+  else if (grade.k === 'perfect') title = 'Proper Cuppa';
+  else if (grade.k === 'strong') title = "Builder's Brew";
+  else title = 'Gentle Dunker';
+
+  const notes = [];
+  if (kind === 'spoon') notes.push('The game is called I Just Use My Hands. You had one job.');
+  else {
+    notes.push({
+      dish: 'Basically hot water with ambitions.',
+      weak: 'A bit shy. Could have gone longer.',
+      perfect: 'A textbook brew. Lovely colour.',
+      strong: 'Builder’s strength. Respect.',
+      stewed: 'Stewed. You could stand a spoon in it, if you owned one.',
+    }[grade.k]);
+    if (kind === 'fail') notes.push('Run it under the cold tap for twenty minutes. The tea is fine, though.');
+    else if (G.pain <= 0) notes.push('Not a single blister.');
+    else if (G.pain < 30) notes.push('A little tingle. Character building.');
+    else if (G.pain < 70) notes.push('Your fingertip has opinions now.');
+    else notes.push('You can no longer feel your index finger.');
+  }
+  if (G.milk) notes.push('Milk in with the bag still in. Some people would call the police.');
+  if (G.Tgrab < 50 && kind === 'out') notes.push('You waited until it was lukewarm. Clever, but it’s cold now.');
+  if (G.Lgrab / m.D < 0.4 && kind === 'out') notes.push('That’s barely a mouthful.');
+  if (G.misses) notes.push(`${G.misses} tea bag${G.misses > 1 ? 's' : ''} went on the counter. Five-second rule.`);
+
+  $('rMug').textContent = m.name;
+  $('rTitle').textContent = title;
+  $('rStars').textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+  $('rStars').setAttribute('aria-label', `${stars} out of 5 stars`);
+  $('rScore').textContent = total;
+  const rows = [
+    ['Brew', `${grade.name} · ${fmtTime(G.grabTea)} steep`],
+    ['Tea temp', `${Math.round(G.Tgrab)}°C when grabbed`],
+    ['Fingers', pain ? `${pain}% scorched · ${G.burns} dip${G.burns === 1 ? '' : 's'}` : 'Untouched'],
+    ['Spills', String(G.spills)],
+    ['Milk', G.milk ? 'In with the bag' : 'None yet'],
+  ];
+  $('rStats').innerHTML = '';
+  for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; $('rStats').append(dt, dd); }
+  $('rNotes').innerHTML = '';
+  for (const n of notes) { const li = document.createElement('li'); li.textContent = n; $('rNotes').append(li); }
+
+  const bests = readBests(), prev = bests[m.id];
+  if (!prev || total > prev.score) { bests[m.id] = { score: total, title }; writeBests(bests); $('rBest').textContent = prev ? `New best for ${m.name}!` : ''; }
+  else $('rBest').textContent = `Best for ${m.name}: ${prev.score} · ${prev.title}`;
+
+  lastShare = `I Just Use My Hands ☕ ${title} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} ${total}/100 · ${grade.name} brew, ${fmtTime(G.grabTea)} · fingers ${pain}% scorched · ${m.name}`;
+  $('copyBox').hidden = true; $('btnCopy').textContent = 'Copy result';
+  $('hud').hidden = true; $('controls').hidden = true; $('hint').hidden = true;
+  $('scrResult').hidden = false;
+}
+
+/* ---------------- mug cards ---------------- */
+function drawPreview(cnv, m) {
+  const c = cnv.getContext('2d'), w = cnv.width, h = cnv.height, k = 0.52;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, w, h);
+  c.fillStyle = 'rgba(233,171,34,.55)'; c.fillRect(0, h - 22, w, 22);
+  c.fillStyle = INK; c.fillRect(0, h - 23, w, 3);
+  c.setTransform(k, 0, 0, k, 0, 0);
+  const cx = (w / 2) / k - 30, counter = (h - 22) / k, fy = counter - m.base - (m.saucer ? 14 : 0);
+  c.fillStyle = 'rgba(0,0,0,.15)'; c.beginPath(); c.ellipse(cx, counter + 4, m.W / 2 + m.wall + 30, 9, 0, 0, Math.PI * 2); c.fill();
+  drawMugBack(c, m, cx, fy, null);
+  drawMugBody(c, m, cx, fy, false);
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 5; c.lineCap = 'round';
+  for (let i = -1; i <= 1; i++) {
+    const sx = cx + i * 36, sy = fy - m.D - 18;
+    c.beginPath(); c.moveTo(sx, sy); c.bezierCurveTo(sx - 14, sy - 20, sx + 14, sy - 36, sx, sy - 56); c.stroke();
+  }
+}
+function buildMugCards() {
+  const grid = $('mugGrid');
+  grid.innerHTML = '';
+  const pips = v => `<span class="pips">${[0, 1, 2, 3, 4].map(i => `<i class="${i < v ? 'on' : ''}"></i>`).join('')}</span>`;
+  for (const m of MUGS) {
+    const btn = document.createElement('button');
+    btn.className = 'mugcard'; btn.id = 'mug-' + m.id; btn.type = 'button';
+    btn.innerHTML = `<canvas width="300" height="210" aria-hidden="true"></canvas>
+      <span class="mname">${m.name}</span>
+      <span class="mdiff d-${m.diff.toLowerCase()}">${m.diff}</span>
+      <span class="mblurb">${m.blurb}</span>
+      <span class="mstats">
+        <span class="st">Heat ${pips(m.stats.heat)}</span>
+        <span class="st">Width ${pips(m.stats.width)}</span>
+        <span class="st">Depth ${pips(m.stats.depth)}</span>
+      </span>
+      <span class="mbest" data-best="${m.id}"></span>`;
+    btn.addEventListener('click', () => { audioInit(); startGame(m); });
+    grid.append(btn);
+    drawPreview(btn.querySelector('canvas'), m);
+  }
+}
+
+/* ---------------- input ---------------- */
+function capture(e) { try { cv.setPointerCapture(e.pointerId); } catch (err) {} }
+function dropBag() {
+  const b = G.bag;
+  if (b.state === 'held' && G.hand.up < 5) { b.state = 'falling'; b.vx *= 0.85; b.w = rand(-2, 2) - b.vx * 0.004; $('hint').hidden = true; }
+}
+cv.addEventListener('pointerdown', e => {
+  audioInit();
+  if (!G) return;
+  e.preventDefault();
+  const m = G.mug, wx = e.clientX / S, wy = e.clientY / S;
+  if (G.phase === 'drop') { dropBag(); return; }
+  if (G.phase === 'pour') { const K = G.kettle; K.holding = true; K.pid = e.pointerId; K.aim = clamp(wx, 40, WW - 40); capture(e); return; }
+  if (G.phase !== 'steep') return;
+  capture(e);
+  // On touch, the fingertip sits above the real finger so it isn't hidden under it.
+  const off = e.pointerType === 'touch' ? 56 / S : 0;
+  const rx = wx - GE.cx, h = GE.fy - (wy - off);
+  if (Math.abs(rx) < m.W / 2 + 4 && h > 0) {
+    let F = G.finger;
+    if (F && (F.flinch || F.grabbed)) return;
+    if (!F) F = G.finger = { x: clamp(rx, -m.W / 2 + 12, m.W / 2 - 12), h: Math.max(m.D + 260, h + 200), slipT: -9, lukeWarned: false };
+    F.active = true; F.pid = e.pointerId; F.tx = rx; F.th = h; F.off = off;
+    return;
+  }
+  G.drag = { pid: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), v: null };
+});
+cv.addEventListener('pointermove', e => {
+  if (!G) return;
+  const K = G.kettle;
+  if (G.phase === 'pour' && K.holding && e.pointerId === K.pid) K.aim = clamp(e.clientX / S, 40, WW - 40);
+  const F = G.finger;
+  if (F && F.active && F.pid === e.pointerId) { F.tx = e.clientX / S - GE.cx; F.th = GE.fy - (e.clientY / S - F.off); }
+  const d = G.drag;
+  if (d && d.pid === e.pointerId) {
+    const dx = e.clientX - d.x, dy = e.clientY - d.y, l = Math.hypot(dx, dy);
+    G.oxT = clamp(G.oxT + dx / S, -80, 80);
+    if (d.v && l > 1.5) spin(Math.atan2(d.v.x * dy - d.v.y * dx, d.v.x * dx + d.v.y * dy));
+    if (l > 1.5) d.v = { x: dx, y: dy };
+    d.x = e.clientX; d.y = e.clientY;
+  }
+});
+function release(e) {
+  if (!G) return;
+  const K = G.kettle;
+  if (K.pid === e.pointerId) { K.holding = false; K.pid = null; }
+  const F = G.finger;
+  if (F && F.pid === e.pointerId) { F.active = false; F.pid = null; }
+  const d = G.drag;
+  if (d && d.pid === e.pointerId) {
+    G.oxT = 0;
+    if (G.phase === 'steep' && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 10 && performance.now() - d.t0 < 300) tapMug();
+    G.drag = null;
+  }
+}
+cv.addEventListener('pointerup', release);
+cv.addEventListener('pointercancel', release);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+addEventListener('keydown', e => {
+  if (!G || e.repeat) return;
+  if (e.key === 'ArrowLeft') G.oxT = -60;
+  else if (e.key === 'ArrowRight') G.oxT = 60;
+  else if (e.key === ' ' && document.activeElement === document.body) {
+    if (G.phase === 'drop') { audioInit(); dropBag(); e.preventDefault(); }
+    else if (G.phase === 'steep') { tapMug(); e.preventDefault(); }
+  }
+});
+addEventListener('keyup', e => { if (G && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) G.oxT = 0; });
+
+$('btnStart').addEventListener('click', () => { audioInit(); goMugs(); });
+$('btnDone').addEventListener('click', () => { if (G.phase === 'pour' && G.L >= G.mug.D * 0.2) { G.kettle.holding = false; setPhase('steep'); } });
+$('btnMilk').addEventListener('click', addMilk);
+$('btnSpoon').addEventListener('click', () => {
+  if (G.phase !== 'steep') return;
+  const btn = $('btnSpoon');
+  if (!spoonArmed) {
+    spoonArmed = true; btn.textContent = 'Really? Tap again'; btn.classList.add('warn');
+    clearTimeout(spoonTimer);
+    spoonTimer = setTimeout(() => { spoonArmed = false; btn.textContent = 'Use a spoon'; btn.classList.remove('warn'); }, 2600);
+    return;
+  }
+  finish('spoon');
+});
+$('btnAgain').addEventListener('click', () => startGame(G.mug));
+$('btnMugs').addEventListener('click', goMugs);
+$('btnCopy').addEventListener('click', () => {
+  const fallback = () => { const box = $('copyBox'); box.value = lastShare; box.hidden = false; box.focus(); box.select(); $('btnCopy').textContent = 'Select and copy the text below'; };
+  try {
+    navigator.clipboard.writeText(lastShare).then(() => { $('btnCopy').textContent = 'Copied'; }, fallback);
+  } catch (err) { fallback(); }
+});
+function syncMute() { $('btnMute').setAttribute('aria-pressed', String(!AU.muted)); }
+$('btnMute').addEventListener('click', () => {
+  audioInit();
+  AU.muted = !AU.muted;
+  if (AU.master) AU.master.gain.value = AU.muted ? 0 : 0.9;
+  try { localStorage.setItem('ijumh-muted', AU.muted ? '1' : '0'); } catch (e) {}
+  syncMute();
+});
+syncMute();
+
+/* ---------------- boot ---------------- */
+buildMugCards();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => document.querySelectorAll('.mugcard canvas').forEach((c, i) => drawPreview(c, MUGS[i])));
+G = demoState(); GE = geo();
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.033, (now - last) / 1000); last = now;
+  GE = geo();
+  update(dt);
+  GE = geo();
+  render();
+  hud();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

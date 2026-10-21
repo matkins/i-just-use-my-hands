@@ -306,6 +306,7 @@ const cv = $('c'), ctx = cv.getContext('2d');
 const INK = '#2a160d', PAPER = '#fff1cf', CREAM = '#fffaf0', TILE = '#2b6b64', MUSTARD = '#e9ab22', TOMATO = '#e0482a';
 const SKIN = '#f0bf95', SKIN_SH = '#d49b70';
 const DISPLAY = '"Bagel Fat One", "Arial Rounded MT Bold", sans-serif';
+const BODY = '"Bricolage Grotesque", system-ui, sans-serif';
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -417,7 +418,7 @@ function newState(m, phase) {
     hand: { ph: rand(0, 6), x: 0, tipH: m.D + 210, up: 0, pz: 1 },
     kettle: { aim: null, p: 0, holding: false, pid: null, leave: 0 },
     finger: null, drag: null, parts: [], pops: [], puddles: [],
-    bubbleT: rand(5, 9), nextDrip: 0, hintUntil: 0,
+    bubbleT: rand(5, 9), nextDrip: 0, hintUntil: 0, guideUp: 0, guideLow: 0,
     done: false, result: null, endAt: 0, shown: false, Tgrab: 0, Lgrab: 0, grabTea: 0,
   };
 }
@@ -796,6 +797,10 @@ function update(dt) {
     G.e += (1 - G.e) * dT / 200 * clamp((G.T - 20) / 75, 0, 1.1) * fb;
   }
 
+  const brewing = G.phase === 'steep' && !G.done, gk = 1 - Math.exp(-dt * 6);
+  G.guideUp += ((brewing && !G.reached ? 1 : 0) - G.guideUp) * gk;
+  G.guideLow += ((brewing && !G.sloshed ? 1 : 0) - G.guideLow) * gk;
+
   if (G.phase === 'drop') updateDrop(dt);
   if (G.phase === 'pour') updatePour(dt);
   else G.kettle.p = Math.max(0, G.kettle.p - dt * 3.5);
@@ -1160,6 +1165,49 @@ function drawPuddles() {
     ctx.beginPath(); ctx.ellipse(p.x, GE.counterY + 8, p.r, Math.max(3, p.r * 0.22), 0, 0, Math.PI * 2); ctx.fill();
   }
 }
+function guideLabel(lines, x, y, a) {
+  ctx.font = `600 22px ${BODY}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 32, h = lines.length * 28 + 14;
+  ctx.globalAlpha = a;
+  ctx.fillStyle = 'rgba(42,22,13,.86)';
+  ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, 14); ctx.fill();
+  ctx.fillStyle = CREAM;
+  lines.forEach((l, i) => ctx.fillText(l, x, y - (lines.length - 1) * 14 + i * 28));
+  ctx.globalAlpha = 1;
+}
+function ghostTouch(x, y, a) {
+  ctx.globalAlpha = a;
+  ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,250,240,.35)'; ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,250,240,.9)'; ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+// Marks the two touch zones while brewing: above the rim moves the hand, level
+// with the mug or below it works the mug.
+function drawGuides() {
+  const up = G.guideUp, low = G.guideLow;
+  if (up > 0.01) {
+    const top = G.hudBottom + 12, bot = GE.rimY - 14, h = bot - top;
+    if (h > 60) {
+      ctx.globalAlpha = up;
+      ctx.beginPath(); ctx.roundRect(18, top, WW - 36, h, 18);
+      ctx.fillStyle = 'rgba(255,250,240,.07)'; ctx.fill();
+      ctx.setLineDash([12, 10]); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,250,240,.55)'; ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      const k = (G.t % 1.8) / 1.8, gy = lerp(top + h * 0.45, bot - 30, Math.min(1, k / 0.7));
+      ghostTouch(GE.cx + 70, gy, up * (k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3));
+    }
+    guideLabel(WW > 520 ? ['Drag down from here to move your hand'] : ['Drag down from here', 'to move your hand'], WW / 2, top + Math.max(40, h * 0.22), up);
+  }
+  if (low > 0.01) {
+    // Fit the ghost and a one-line label into the strip of counter above the buttons.
+    const free = Math.max(90, G.ctrlTop - GE.counterY - 8);
+    const ly = GE.counterY + free - 25, gy = Math.max(GE.counterY + 18, ly - 46);
+    ghostTouch(GE.cx + Math.sin(G.t * 3.2) * 110, gy, low);
+    guideLabel(['Swipe here to slosh · tap to knock'], WW / 2, ly, low);
+  }
+}
+
 function drawPops() {
   for (const p of G.pops) {
     const k = 1 - p.life / p.max;
@@ -1210,6 +1258,7 @@ function render() {
   }
 
   drawParticles();
+  drawGuides();
   if (G.phase === 'drop' || (G.hand.up > 0 && G.hand.up < 1500 && G.phase === 'pour')) {
     drawHand(cx + G.hand.x, fy - G.hand.tipH - G.hand.up, G.hand.pz, 0);
   }
@@ -1242,19 +1291,11 @@ function hud() {
 const HINTS = {
   drop: 'Tap to drop the tea bag in.',
   pour: 'Hold to pour, drag to aim. Fill to the dotted line, then tap “That’ll do”.',
-  steep: 'Swipe left and right level with the mug to slosh it. Draw circles to swirl the bag, or tap the mug to make it bob.',
 };
-const HINT_REACH = 'Now press above the mug and drag down to reach in. Pinch a corner that’s poking out of the tea.';
-function noteSlosh() {
-  if (G.phase !== 'steep' || G.sloshed) return;
-  G.sloshed = true;
-  showHint(HINT_REACH, G.reached ? 4 : 0);
-}
-function noteReach() {
-  if (G.phase !== 'steep' || G.reached) return;
-  G.reached = true;
-  if (G.sloshed) G.hintUntil = G.t + 2;
-}
+// While brewing, the guides drawn in each touch zone do the explaining; each one
+// fades out once you've used its zone.
+function noteSlosh() { if (G.phase === 'steep') G.sloshed = true; }
+function noteReach() { if (G.phase === 'steep') G.reached = true; }
 function showHint(text, secs) { $('hint').textContent = text; $('hint').hidden = false; G.hintUntil = secs ? G.t + secs : 0; }
 
 function setPhase(ph) { G.phase = ph; setPhaseUI(); }
@@ -1270,7 +1311,15 @@ function setPhaseUI() {
   if (HINTS[ph]) showHint(HINTS[ph], 0);
   else $('hint').hidden = true;
   if (ph !== 'pour') sfx.pour(0);
+  measureHud();
 }
+function measureHud() {
+  if (!G) return;
+  G.hudBottom = $('hud').getBoundingClientRect().bottom / S;
+  const r = $('btnSpoon').getBoundingClientRect();
+  G.ctrlTop = (r.height ? r.top : CH) / S;
+}
+addEventListener('resize', measureHud);
 
 function startGame(m) {
   G = newState(m, 'drop'); GE = geo();

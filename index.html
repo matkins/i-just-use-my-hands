@@ -979,7 +979,7 @@ function tapMug() {
 }
 function spin(ang) {
   const b = G.bag;
-  if (b.state === 'mug') b.w = clamp(b.w - ang * 1.5 * (b.f > 0.02 ? 1 : 0.3), -20, 20);
+  if (b.state === 'mug') b.w = clamp(b.w - ang * 2.8 * (b.f > 0.02 ? 1 : 0.3), -20, 20);
   G.sv += ang * 0.04;
 }
 
@@ -1906,7 +1906,7 @@ cv.addEventListener('pointerdown', e => {
     noteReach();
     return;
   }
-  G.drag = { pid: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), v: null };
+  G.drag = { pid: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, ax: e.clientX, ay: e.clientY, t0: performance.now(), v: null, turn: 0 };
 });
 cv.addEventListener('pointermove', e => {
   if (!G) return;
@@ -1919,11 +1919,18 @@ cv.addEventListener('pointermove', e => {
   }
   const d = G.drag;
   if (d && d.pid === e.pointerId) {
-    const dx = e.clientX - d.x, dy = e.clientY - d.y, l = Math.hypot(dx, dy);
-    G.oxT = clamp(G.oxT + dx / S, -80, 80);
-    if (d.v && l > 1.5) spin(Math.atan2(d.v.x * dy - d.v.y * dx, d.v.x * dx + d.v.y * dy));
+    const dx = e.clientX - d.x;
+    // Once the finger is clearly going round, the sideways part of each circle
+    // barely moves the mug, so it doesn't fight the spin.
+    G.oxT = clamp(G.oxT + dx / S * (Math.abs(d.turn) > 2.5 ? 0.25 : 1), -80, 80);
+    // Measure turning over steps of 12 px or more, not every tiny move, so a
+    // hand-drawn circle reads as a clean turn.
+    const sx = e.clientX - d.ax, sy = e.clientY - d.ay;
+    if (Math.hypot(sx, sy) >= 12) {
+      if (d.v) { const ang = Math.atan2(d.v.x * sy - d.v.y * sx, d.v.x * sx + d.v.y * sy); spin(ang); d.turn = d.turn * 0.85 + ang; }
+      d.v = { x: sx, y: sy }; d.ax = e.clientX; d.ay = e.clientY;
+    }
     if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 40) noteSlosh();
-    if (l > 1.5) d.v = { x: dx, y: dy };
     d.x = e.clientX; d.y = e.clientY;
   }
 });

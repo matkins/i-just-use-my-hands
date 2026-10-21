@@ -1022,8 +1022,10 @@ const HAND_PATH = 'M48347.67 16336.27c327.53,24.39 290.47,522.43 -37.1,498.04 -1
 const HAND_PINCH = [5600, 33900], HAND_K = 0.0068, HAND_RES = 3, HAND_ROT = -0.5;
 // The index finger is cut out along the crease where it meets the curled fingers,
 // so it can swing about its knuckle to open and close the pinch.
-const HAND_CUT = [[12500, 10000], [12500, 16500], [12000, 20250], [10400, 25000], [11100, 27600], [10000, 30250], [6000, 34500], [4500, 40000], [-1000, 40000], [-1000, 10000]];
-const HAND_PIVOT = [11800, 21500], HAND_OPEN = 0.085, HAND_SHUT = -0.2;
+const HAND_CUT = [[9600, 17800], [11340, 19570], [12200, 20500], [10400, 25000], [11100, 27600], [10000, 30250], [6000, 34500], [4500, 40000], [-1000, 40000], [-1000, 10000], [9600, 10000]];
+// The pivot sits where the cut crosses the back of the finger, so the outline
+// there bends like a knuckle instead of stepping.
+const HAND_PIVOT = [11340, 19570], HAND_OPEN = 0.077, HAND_SHUT = -0.18;
 function buildHandSprites() {
   const vw = 48600, vh = 38400, k = HAND_K * HAND_RES;
   const w = Math.ceil(vw * k), h = Math.ceil(vh * k);

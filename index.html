@@ -758,7 +758,7 @@ function updateDrop(dt) {
     const hC = -(m.base + (m.saucer ? 14 : 0));
     if (b.y + ex.bot <= hC) {
       b.a = b.sh.rest; b.y = hC - extent(b).bot; b.state = 'table'; b.vx = b.vy = b.w = 0; b.tableT = G.t;
-      G.misses++; sfx.plop(); pop(pick(['Missed!', 'Wide of the mug!', 'Splat.']), TOMATO, 38);
+      G.misses++; sfx.plop(); pop(pick(['Missed!', 'You missed!', 'Splat.']), TOMATO, 38);
     }
   } else if (b.state === 'table') {
     if (G.t - b.tableT > 1.4) { b.state = 'held'; h.up = 600; pop('Five-second rule. Again.', PAPER, 28); }

@@ -170,16 +170,23 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .bagcard .mdiff { justify-self: start; }
 .bagcard canvas { grid-row: span 4; width: 84px; height: 84px; border-radius: 10px; background: #f6e3b8; }
 .bagcard:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
-.mugs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mugs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .mugcard {
-  display: flex; flex-direction: column; gap: 4px; text-align: left; min-width: 0;
+  display: grid; grid-template-columns: 112px 1fr; gap: 3px 12px; align-content: start; align-items: center; text-align: left; min-width: 0;
   background: var(--cream); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink);
   padding: 8px 10px 12px; font: inherit; color: inherit; cursor: pointer;
   transition: transform .08s, box-shadow .08s;
   touch-action: manipulation;
 }
 .mugcard:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
-.mugcard canvas { width: 100%; height: auto; aspect-ratio: 300 / 210; max-width: 100%; display: block; border-radius: 10px; background: #f6e3b8; }
+.mugcard canvas { grid-row: 1 / span 4; align-self: center; width: 100%; height: auto; aspect-ratio: 300 / 210; max-width: 100%; display: block; border-radius: 10px; background: #f6e3b8; }
+.mugcard .mhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mugcard .mdiff { font-size: 10px; padding: 1px 7px; }
+.mugcard .mname { margin-top: 0; font-size: 18px; }
+.mugcard .mblurb { font-size: 12.5px; line-height: 1.25; }
+.mugcard .mstats { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 2px; }
+.mugcard .st { grid-template-columns: 1fr; gap: 2px; font-size: 9.5px; }
+.mugcard .pips i { height: 6px; }
 .mname { font-family: var(--f-display); font-size: 19px; line-height: 1.05; margin-top: 4px; }
 .mdiff { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 2px solid var(--ink); }
 .d-easy { background: #bfe3c9; } .d-normal { background: var(--paper); } .d-hard { background: var(--mustard); } .d-silly { background: var(--tomato); color: var(--cream); }
@@ -318,10 +325,12 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Slosh</b><span>Swipe left and right anywhere level with the mug. The tea rocks and the bag rides up the side.</span></li>
       <li><b>Swirl</b><span>Draw circles level with the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
       <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
+      <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea, or give it a quick shake to knock it.</span></li>
       <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
       <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
+    <button class="link" id="btnTilt" type="button" aria-pressed="true">Tilt and shake: on</button>
     <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
   </div>
 </section>
@@ -474,6 +483,36 @@ const sfx = {
   },
 };
 function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+
+// Tilt and shake. While brewing, tilting the phone left or right (from however
+// you were holding it when brewing started) slides the mug that way and sloshes
+// the tea; a sharp shake knocks it like a tap. iPhones ask permission first,
+// which has to come from a tap, so it's requested as a game starts.
+const TILT = { on: true, asked: false, seen: false, g0: null, off: 0, shakeT: 0, prev: null };
+try { TILT.on = localStorage.getItem('ijumh-tilt') !== '0'; } catch (e) {}
+function requestMotion() {
+  if (!TILT.on || TILT.asked) return;
+  TILT.asked = true;
+  for (const Ev of [window.DeviceOrientationEvent, window.DeviceMotionEvent]) {
+    if (Ev && typeof Ev.requestPermission === 'function') Ev.requestPermission().catch(() => {});
+  }
+}
+addEventListener('deviceorientation', e => {
+  if (e.gamma == null) return;
+  TILT.seen = true;
+  if (!TILT.on || !G || G.phase !== 'steep' || G.done) { TILT.g0 = null; TILT.off = 0; return; }
+  if (TILT.g0 == null) TILT.g0 = e.gamma;
+  const d = e.gamma - TILT.g0, dz = 2;
+  TILT.off = clamp((Math.abs(d) < dz ? 0 : d - Math.sign(d) * dz) * 3.2, -80, 80);
+});
+addEventListener('devicemotion', e => {
+  if (!TILT.on || !G || G.phase !== 'steep' || G.done) return;
+  const a = e.acceleration, ag = e.accelerationIncludingGravity;
+  let jolt = 0;
+  if (a && a.x != null) jolt = Math.hypot(a.x, a.y, a.z);
+  else if (ag && ag.x != null) { if (TILT.prev) jolt = Math.hypot(ag.x - TILT.prev.x, ag.y - TILT.prev.y, ag.z - TILT.prev.z); TILT.prev = { x: ag.x, y: ag.y, z: ag.z }; }
+  if (jolt > 15 && G.t - TILT.shakeT > 0.35) { TILT.shakeT = G.t; tapMug(); noteSlosh(); }
+});
 
 /* ---------------- state ---------------- */
 let G = null, GE = null;
@@ -647,7 +686,7 @@ function stepSlosh(dt) {
     const dL = Math.min(G.L, (edge - m.D) * 3 * dt);
     G.L -= dL; G.spillVol += dL;
     const sg = Math.sign(G.s) || 1;
-    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
+    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
     G.spillT = G.t;
     if (Math.random() < 0.7) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 4, vx: sg * rand(40, 170), vy: -rand(40, 200), r: rand(2.5, 5), life: 2, max: 2, col: liquidCss() });
   } else if (edge < m.D - 4 && G.t - G.spillT > 0.4) G.spilling = false;
@@ -721,7 +760,7 @@ function addWater(dv, xr) {
 function overflow(ex) {
   const m = G.mug;
   G.L = m.D; G.spillVol += ex; G.spillT = G.t;
-  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); pop('Overflow!', TOMATO, 36); }
+  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop('Overflow!', TOMATO, 36); }
   for (const sg of [-1, 1]) if (Math.random() < 0.5) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 2, vx: sg * rand(30, 110), vy: -rand(20, 90), r: rand(2.5, 4.5), life: 2, max: 2, col: liquidCss() });
 }
 function splashCounter(dv, wx) {
@@ -795,6 +834,7 @@ function burn(sub, tf) {
 
 function grab() {
   const F = G.finger, b = G.bag, cs = corners(b);
+  vibrate([18, 40, 28]);
   let bi = 0, bd = 1e9;
   cs.forEach((c, i) => { const d = Math.hypot(b.x + c.rx - F.x, b.y + c.ry - F.h); if (d < bd) { bd = d; bi = i; } });
   b.attach = bi; b.phi = b.a + Math.PI / 4 + bi * Math.PI * 2 / b.sh.n; b.phiV = b.w * 0.5; b.state = 'lifted';
@@ -830,6 +870,7 @@ function tapMug() {
   sfx.tap();
   G.ripA = Math.min(7, G.ripA + 3 + G.tapHeat * 0.6);
   if (b.state === 'mug' && b.f > 0.02) { b.vy += (45 * b.f + 15) * kick; b.w += rand(-2, 2) * kick; }
+  if (kick > 0.3) vibrate(10);
   if (G.tapHeat > 3.5 && G.t - G.rattleT > 3) { G.rattleT = G.t; pop(pick(['Stop rattling it!', 'Easy, easy.', 'It’s a mug, not a drum.']), PAPER, 28); }
   pop('tink', CREAM, 22, GE.cx + rand(-60, 60), GE.rimY - 20);
 }
@@ -875,7 +916,9 @@ function update(dt) {
   G.t += dt;
   const m = G.mug, b = G.bag;
 
-  const acc = 220 * (G.oxT - G.ox) - 22 * G.oxV;
+  const oxTarget = G.drag || G.phase !== 'steep' ? G.oxT : clamp(G.oxT + TILT.off, -80, 80);
+  if (Math.abs(TILT.off) > 20) noteSlosh();
+  const acc = 220 * (oxTarget - G.ox) - 22 * G.oxV;
   G.oxV += acc * dt; G.ox += G.oxV * dt; G.oxA = acc;
 
   if (G.phase === 'demo') {
@@ -1397,9 +1440,10 @@ function drawGuides() {
   if (low > 0.01) {
     const m = G.mug, side = GE.cx - m.W / 2 - m.wall - 10, sx = side / 2;
     const ly = GE.rimY + (GE.counterY - GE.rimY) * 0.3;
-    guideLabel(['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
+    const tilt = TILT.on && TILT.seen;
+    guideLabel(tilt ? ['Swipe or tilt', 'to slosh', 'Circle to swirl', 'Tap or shake', 'to knock'] : ['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
     // The ghost touch swipes side to side, then draws circles.
-    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + 120;
+    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + (tilt ? 160 : 120);
     const gx = k < 2 ? sx + Math.sin(k * Math.PI * 2) * Math.min(50, side / 2 - 22) : sx + Math.cos((k - 2) * Math.PI * 2) * r;
     ghostTouch(gx, k < 2 ? gy : gy + Math.sin((k - 2) * Math.PI * 2) * r, low);
   }
@@ -1491,7 +1535,7 @@ function noteSlosh() { if (G.phase === 'steep') G.sloshed = true; }
 function noteReach() { if (G.phase === 'steep') G.reached = true; }
 function showHint(text, secs) { $('hint').textContent = text; $('hint').hidden = false; G.hintUntil = secs ? G.t + secs : 0; }
 
-function setPhase(ph) { G.phase = ph; setPhaseUI(); }
+function setPhase(ph) { G.phase = ph; TILT.g0 = null; TILT.off = 0; setPhaseUI(); }
 let spoonArmed = false, spoonTimer = 0;
 function setPhaseUI() {
   const ph = G.phase;
@@ -1515,6 +1559,7 @@ function measureHud() {
 addEventListener('resize', measureHud);
 
 function startGame(m) {
+  requestMotion();
   G = newState(m, 'drop'); GE = geo();
   for (const k in hudCache) delete hudCache[k];
   SCREENS.forEach(id => $(id).hidden = true);
@@ -1708,8 +1753,7 @@ function buildMugCards() {
     const btn = document.createElement('button');
     btn.className = 'mugcard'; btn.id = 'mug-' + m.id; btn.type = 'button';
     btn.innerHTML = `<canvas width="300" height="210" aria-hidden="true"></canvas>
-      <span class="mname">${m.name}</span>
-      <span class="mdiff d-${m.diff.toLowerCase()}">${m.diff}</span>
+      <span class="mhead"><span class="mname">${m.name}</span><span class="mdiff d-${m.diff.toLowerCase()}">${m.diff}</span></span>
       <span class="mblurb">${m.blurb}</span>
       <span class="mstats">
         <span class="st">Heat ${pips(m.stats.heat)}</span>
@@ -1816,6 +1860,13 @@ $('btnHelp').addEventListener('click', () => {
   G.drag = null; G.oxT = 0;
   $('scrHelp').hidden = false;
 });
+function syncTilt() { $('btnTilt').textContent = `Tilt and shake: ${TILT.on ? 'on' : 'off'}`; $('btnTilt').setAttribute('aria-pressed', String(TILT.on)); }
+$('btnTilt').addEventListener('click', () => {
+  TILT.on = !TILT.on; TILT.off = 0; TILT.g0 = null; syncTilt();
+  try { localStorage.setItem('ijumh-tilt', TILT.on ? '1' : '0'); } catch (e) {}
+  if (TILT.on) { TILT.asked = false; requestMotion(); }
+});
+syncTilt();
 $('btnResume').addEventListener('click', () => { G.paused = false; $('scrHelp').hidden = true; });
 $('btnSpoon').addEventListener('click', () => {
   if (G.phase !== 'steep') return;

@@ -496,14 +496,15 @@ function audioInit() {
   } catch (e) { AU.ctx = null; }
 }
 
-// Background music, made on the fly: a slow, soft pad through a warm filter,
-// cycling Fmaj7, Dm7, Bbmaj7, Csus4/C at 66 bpm, with now and then a gentle
-// plucked note from the F major pentatonic over it. It has its own volume,
-// separate from the sound effects.
+// Background music, made on the fly: a bright, bouncy loop at 96 bpm over
+// F, C, Dm, Bb. A soft pad holds the chord, a round bass plays on beats one and
+// three, a light arpeggio ripples on the off-beats, and a little melody steps up
+// and down the F major pentatonic. It has its own volume, separate from the
+// sound effects.
 const MUSIC = {
-  bpm: 66, vol: 0.075, timer: 0, next: 0, bar: 0,
-  chords: [[53, 57, 60, 64], [50, 53, 57, 60], [46, 50, 53, 57], [48, 53, 55, 60]],
-  scale: [65, 67, 69, 72, 74, 77, 79, 81],
+  bpm: 96, vol: 0.075, timer: 0, next: 0, bar: 0, mel: 3,
+  chords: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]],
+  scale: [65, 67, 69, 72, 74, 77, 79, 81, 84],
 };
 const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
 function startMusic() {
@@ -524,8 +525,8 @@ function setMusic(on) {
 function padNote(n, t, len) {
   const c = AU.ctx, g = c.createGain();
   g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(0.16, t + len * 0.35);
-  g.gain.setValueAtTime(0.16, t + len * 0.7);
+  g.gain.linearRampToValueAtTime(0.11, t + len * 0.15);
+  g.gain.setValueAtTime(0.11, t + len * 0.7);
   g.gain.linearRampToValueAtTime(0, t + len * 1.05);
   for (const det of [-5, 5]) {
     const o = c.createOscillator();
@@ -534,12 +535,12 @@ function padNote(n, t, len) {
   }
   g.connect(AU.musicBus);
 }
-function pluck(n, t) {
+function pluck(n, t, vol = 0.3, len = 0.9, type = 'triangle') {
   const c = AU.ctx, o = c.createOscillator(), g = c.createGain();
-  o.type = 'sine'; o.frequency.value = midiHz(n);
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.3, t + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
-  o.connect(g); g.connect(AU.musicBus); o.start(t); o.stop(t + 1.7);
+  o.type = type; o.frequency.value = midiHz(n);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.001, t + len);
+  o.connect(g); g.connect(AU.musicBus); o.start(t); o.stop(t + len + 0.05);
 }
 function scheduleMusic() {
   const c = AU.ctx; if (!c || c.state !== 'running') return;
@@ -550,8 +551,18 @@ function scheduleMusic() {
     const t = MUSIC.next, ch = MUSIC.chords[MUSIC.bar % 4];
     if (!AU.music) { MUSIC.next += barLen; MUSIC.bar++; continue; }
     ch.forEach(n => padNote(n, t, barLen));
-    padNote(ch[0] - 12, t, barLen);
-    for (let b = 0; b < 4; b++) if (Math.random() < (b === 0 ? 0.5 : 0.28)) pluck(MUSIC.scale[(Math.random() * MUSIC.scale.length) | 0], t + b * beat + (Math.random() < 0.3 ? beat / 2 : 0));
+    // Bass on one and three, bouncing up an octave on three.
+    pluck(ch[0] - 12, t, 0.45, beat * 1.6, 'sine');
+    pluck(ch[0], t + beat * 2, 0.32, beat * 1.4, 'sine');
+    // Arpeggio on the off-beats.
+    for (let k = 0; k < 4; k++) pluck(ch[k % 3] + 12, t + (k + 0.5) * beat, 0.09, beat * 0.8);
+    // Melody: mostly steps to a neighbouring note, landing on most beats and
+    // some half-beats, resting now and then.
+    for (let h = 0; h < 8; h++) {
+      if (Math.random() > (h % 2 ? 0.3 : 0.75)) continue;
+      MUSIC.mel = clamp(MUSIC.mel + pick([-1, -1, 1, 1, 1, 2, -2, 0]), 0, MUSIC.scale.length - 1);
+      pluck(MUSIC.scale[MUSIC.mel], t + h * beat / 2, 0.26, beat * 1.1);
+    }
     MUSIC.next += barLen; MUSIC.bar++;
   }
 }
@@ -1178,7 +1189,7 @@ function drawMugBody(c, m, cx, fy, cut) {
     c.fillStyle = m.trim; c.fillRect(L, T + 12, BW, 12); c.fillRect(L, Bt - 30, BW, 8);
     if (!cut) {
       c.fillStyle = INK; c.font = `22px ${DISPLAY}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText("WORLD'S", cx, T + m.D * 0.42); c.fillText('OKAYEST', cx, T + m.D * 0.42 + 26); c.fillText('BREW', cx, T + m.D * 0.42 + 52);
+      c.fillText('TRUMAN', cx, T + m.D * 0.45); c.fillText('CUP-O-TEA', cx, T + m.D * 0.45 + 28);
     }
   } else if (m.id === 'teacup') {
     c.fillStyle = '#d7a93a'; c.fillRect(L, T, BW, 6);

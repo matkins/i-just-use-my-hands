@@ -386,7 +386,8 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <p class="kicker">Preferences</p>
     <h2>Settings</h2>
     <ul class="settings">
-      <li><span><b>Sound</b><small>Sizzles, pours, plops and yelps.</small></span><button class="toggle" id="setSound" type="button" role="switch" aria-label="Sound"></button></li>
+      <li><span><b>Music</b><small>A gentle tune in the background.</small></span><button class="toggle" id="setMusic" type="button" role="switch" aria-label="Music"></button></li>
+      <li><span><b>Sound effects</b><small>Sizzles, pours, plops and yelps.</small></span><button class="toggle" id="setSound" type="button" role="switch" aria-label="Sound effects"></button></li>
       <li id="rowVib" hidden><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
       <li><span><b>Tilt to slosh</b><small>Tilt your phone left and right to slide the mug while it brews.</small></span><button class="toggle" id="setTilt" type="button" role="switch" aria-label="Tilt to slosh"></button></li>
     </ul>
@@ -474,8 +475,8 @@ function shade(hex, amt) {
 }
 
 /* ---------------- audio ---------------- */
-const AU = { ctx: null, master: null, pourG: null, pourF: null, noise: null, muted: false };
-try { AU.muted = localStorage.getItem('ijumh-muted') === '1'; } catch (e) {}
+const AU = { ctx: null, master: null, pourG: null, pourF: null, noise: null, muted: false, music: true, musicBus: null };
+try { AU.muted = localStorage.getItem('ijumh-muted') === '1'; AU.music = localStorage.getItem('ijumh-music') !== '0'; } catch (e) {}
 function audioInit() {
   if (AU.ctx) { if (AU.ctx.state === 'suspended') AU.ctx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -491,7 +492,68 @@ function audioInit() {
     const g = c.createGain(); g.gain.value = 0;
     src.connect(f); f.connect(g); g.connect(AU.master); src.start();
     AU.pourG = g; AU.pourF = f;
+    startMusic();
   } catch (e) { AU.ctx = null; }
+}
+
+// Background music, made on the fly: a slow, soft pad through a warm filter,
+// cycling Fmaj7, Dm7, Bbmaj7, Csus4/C at 66 bpm, with now and then a gentle
+// plucked note from the F major pentatonic over it. It has its own volume,
+// separate from the sound effects.
+const MUSIC = {
+  bpm: 66, vol: 0.075, timer: 0, next: 0, bar: 0,
+  chords: [[53, 57, 60, 64], [50, 53, 57, 60], [46, 50, 53, 57], [48, 53, 55, 60]],
+  scale: [65, 67, 69, 72, 74, 77, 79, 81],
+};
+const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
+function startMusic() {
+  const c = AU.ctx; if (!c || AU.musicBus) return;
+  const bus = c.createGain(), lp = c.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = 0.4;
+  bus.gain.value = AU.music ? MUSIC.vol : 0;
+  bus.connect(lp); lp.connect(c.destination);
+  AU.musicBus = bus;
+  MUSIC.next = c.currentTime + 0.3;
+  MUSIC.timer = setInterval(scheduleMusic, 250);
+  scheduleMusic();
+}
+function setMusic(on) {
+  AU.music = on;
+  if (AU.musicBus) AU.musicBus.gain.setTargetAtTime(on ? MUSIC.vol : 0, AU.ctx.currentTime, 0.4);
+}
+function padNote(n, t, len) {
+  const c = AU.ctx, g = c.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.16, t + len * 0.35);
+  g.gain.setValueAtTime(0.16, t + len * 0.7);
+  g.gain.linearRampToValueAtTime(0, t + len * 1.05);
+  for (const det of [-5, 5]) {
+    const o = c.createOscillator();
+    o.type = 'triangle'; o.frequency.value = midiHz(n); o.detune.value = det;
+    o.connect(g); o.start(t); o.stop(t + len * 1.1);
+  }
+  g.connect(AU.musicBus);
+}
+function pluck(n, t) {
+  const c = AU.ctx, o = c.createOscillator(), g = c.createGain();
+  o.type = 'sine'; o.frequency.value = midiHz(n);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.3, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+  o.connect(g); g.connect(AU.musicBus); o.start(t); o.stop(t + 1.7);
+}
+function scheduleMusic() {
+  const c = AU.ctx; if (!c || c.state !== 'running') return;
+  const beat = 60 / MUSIC.bpm, barLen = beat * 4;
+  // Skip ahead rather than pile up notes after the tab was in the background.
+  if (MUSIC.next < c.currentTime - 0.1) MUSIC.next = c.currentTime + 0.1;
+  while (MUSIC.next < c.currentTime + 1.5) {
+    const t = MUSIC.next, ch = MUSIC.chords[MUSIC.bar % 4];
+    if (!AU.music) { MUSIC.next += barLen; MUSIC.bar++; continue; }
+    ch.forEach(n => padNote(n, t, barLen));
+    padNote(ch[0] - 12, t, barLen);
+    for (let b = 0; b < 4; b++) if (Math.random() < (b === 0 ? 0.5 : 0.28)) pluck(MUSIC.scale[(Math.random() * MUSIC.scale.length) | 0], t + b * beat + (Math.random() < 0.3 ? beat / 2 : 0));
+    MUSIC.next += barLen; MUSIC.bar++;
+  }
 }
 function tone(f0, dur, type, vol, f1) {
   const c = AU.ctx; if (!c) return;
@@ -1971,6 +2033,7 @@ $('btnCopy').addEventListener('click', () => {
 // from the title, or mid-game from the gear in the HUD (which pauses play).
 let settingsFrom = 'scrTitle';
 function syncSettings() {
+  $('setMusic').setAttribute('aria-checked', String(AU.music));
   $('setSound').setAttribute('aria-checked', String(!AU.muted));
   $('setVib').setAttribute('aria-checked', String(vibOn));
   $('setTilt').setAttribute('aria-checked', String(TILT.on));
@@ -1985,6 +2048,10 @@ function openSettings(from) {
 const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} };
 // Only Android browsers can vibrate, so only they get the switch.
 $('rowVib').hidden = !('vibrate' in navigator && /Android/i.test(navigator.userAgent));
+$('setMusic').addEventListener('click', () => {
+  audioInit();
+  setMusic(!AU.music); savePref('ijumh-music', AU.music); syncSettings();
+});
 $('setSound').addEventListener('click', () => {
   audioInit();
   AU.muted = !AU.muted;
@@ -2024,6 +2091,12 @@ $('btnSetBack').addEventListener('click', () => {
   if (settingsFrom === 'game') { G.paused = false; $('scrSettings').hidden = true; } else showScreen(settingsFrom);
 });
 syncSettings();
+
+// Go quiet while the game is in the background.
+document.addEventListener('visibilitychange', () => {
+  if (!AU.ctx) return;
+  if (document.hidden) AU.ctx.suspend(); else AU.ctx.resume();
+});
 
 /* ---------------- boot ---------------- */
 buildMugCards();

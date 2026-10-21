@@ -154,28 +154,39 @@ h1 span + span { color: var(--mustard); transform: rotate(-3deg); }
 .credit a { color: inherit; }
 h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 8vw, 40px); line-height: 1; text-wrap: balance; }
 
-.bagpick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 5px; }
-.bp-label { flex-basis: 100%; text-align: center; font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
-.bp {
-  display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 8px 7px; border: 3px solid var(--ink); border-radius: 16px;
-  background: var(--cream); font: 600 14px var(--f-body); color: var(--ink); cursor: pointer; touch-action: manipulation;
+.step-sub { margin: 0; font-size: 14px; line-height: 1.4; color: var(--dim); }
+.linkrow { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.titleblock .linkrow { gap: 10px; }
+.titleblock .link { color: var(--cream); font-size: 15px; text-decoration: none; background: rgba(42,22,13,.78); border-radius: 999px; padding: 8px 16px; }
+.bags { display: grid; gap: 10px; }
+.bagcard {
+  display: grid; grid-template-columns: 84px 1fr; gap: 4px 12px; align-items: center; text-align: left;
+  background: var(--cream); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink);
+  padding: 10px 12px; font: inherit; color: inherit; cursor: pointer; touch-action: manipulation;
+  transition: transform .08s, box-shadow .08s;
 }
-.bp-top { display: inline-flex; align-items: center; gap: 5px; }
-.bp .mdiff { align-self: center; font-size: 9.5px; padding: 1px 7px; border-width: 1.5px; }
-.bp .d-hard { background: var(--tomato); color: var(--cream); }
-.bp svg { width: 16px; height: 16px; fill: #e9d9b4; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; }
-.bp[aria-checked="true"] { background: var(--mustard); }
-.bp:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
-.mugs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.bagcard:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.bagcard[aria-current="true"] { background: #fff6dc; outline: 3px solid var(--mustard); outline-offset: -8px; }
+.bagcard .mdiff { justify-self: start; }
+.bagcard canvas { grid-row: span 4; width: 84px; height: 84px; border-radius: 10px; background: #f6e3b8; }
+.bagcard:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+.mugs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .mugcard {
-  display: flex; flex-direction: column; gap: 4px; text-align: left; min-width: 0;
+  display: grid; grid-template-columns: 112px 1fr; gap: 3px 12px; align-content: start; align-items: center; text-align: left; min-width: 0;
   background: var(--cream); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink);
   padding: 8px 10px 12px; font: inherit; color: inherit; cursor: pointer;
   transition: transform .08s, box-shadow .08s;
   touch-action: manipulation;
 }
 .mugcard:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
-.mugcard canvas { width: 100%; height: auto; aspect-ratio: 300 / 210; max-width: 100%; display: block; border-radius: 10px; background: #f6e3b8; }
+.mugcard canvas { grid-row: 1 / span 4; align-self: center; width: 100%; height: auto; aspect-ratio: 300 / 210; max-width: 100%; display: block; border-radius: 10px; background: #f6e3b8; }
+.mugcard .mhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mugcard .mdiff { font-size: 10px; padding: 1px 7px; }
+.mugcard .mname { margin-top: 0; font-size: 18px; }
+.mugcard .mblurb { font-size: 12.5px; line-height: 1.25; }
+.mugcard .mstats { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 2px; }
+.mugcard .st { grid-template-columns: 1fr; gap: 2px; font-size: 9.5px; }
+.mugcard .pips i { height: 6px; }
 .mname { font-family: var(--f-display); font-size: 19px; line-height: 1.05; margin-top: 4px; }
 .mdiff { align-self: flex-start; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 2px solid var(--ink); }
 .d-easy { background: #bfe3c9; } .d-normal { background: var(--paper); } .d-hard { background: var(--mustard); } .d-silly { background: var(--tomato); color: var(--cream); }
@@ -187,8 +198,6 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .pips i.on { background: var(--ink); }
 .mbest { font-size: 12px; font-weight: 600; color: var(--tile); min-height: 1em; }
 
-.how { margin: 0; padding-left: 22px; display: grid; gap: 6px; font-size: 14px; line-height: 1.4; }
-.how li::marker { font-family: var(--f-display); color: var(--tomato); }
 .link { background: none; border: 0; padding: 4px; font: 600 15px var(--f-body); color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; align-self: center; }
 
 .result { text-align: center; align-items: center; }
@@ -266,28 +275,43 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <h1><span>I just use</span><span>my hands</span></h1>
     <p class="lede">Get the tea bag out of a freshly boiled cuppa. No spoon. Try not to cook your fingertips.</p>
     <button class="btn primary big" id="btnStart">Put the kettle on</button>
-    <p class="small">Sound on for the full sizzle.</p>
+    <div class="linkrow">
+      <button class="link" id="btnHowT" type="button">How to play</button>
+      <button class="link" id="btnRecordsT" type="button">Your records</button>
+    </div>
   </div>
 </section>
 
 <section class="screen veil" id="scrMugs" hidden>
   <div class="panel">
-    <p class="kicker">Step one</p>
-    <h2>Pick your vessel</h2>
-    <div class="bagpick" role="radiogroup" aria-label="Tea bag shape">
-      <span class="bp-label">Tea bag</span>
-      <button type="button" class="bp" data-bag="pyramid" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 20H3Z"/></svg>Pyramid</span><span class="mdiff d-easy">Easy</span></button>
-      <button type="button" class="bp" data-bag="square" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Square</span><span class="mdiff d-normal">Normal</span></button>
-      <button type="button" class="bp" data-bag="round" role="radio"><span class="bp-top"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg>Round</span><span class="mdiff d-hard">Hard</span></button>
-    </div>
+    <p class="kicker">Step 1 of 2</p>
+    <h2>Pick your mug</h2>
     <div class="mugs" id="mugGrid"></div>
-    <button class="link" id="btnRecords" type="button">Your records</button>
-    <ol class="how">
-      <li>Tap to drop the bag while it swings over the mug.</li>
-      <li>Hold to pour, drag to aim. Pour beside the bag: a soggy bag sinks.</li>
-      <li>Let it brew. The dashed zone on the steep bar is a perfect cuppa.</li>
-      <li>Swipe level with the mug to slosh it, draw circles to swirl, tap it to make the bag bob. When a dry corner (or the rim of a round bag) pokes out, drag down from above the mug to reach in and pinch it. Touch the tea and you'll know about it.</li>
-    </ol>
+    <button class="link" id="btnMugsBack" type="button">Back</button>
+  </div>
+</section>
+
+<section class="screen veil" id="scrBags" hidden>
+  <div class="panel">
+    <p class="kicker">Step 2 of 2</p>
+    <h2>Pick your tea bag</h2>
+    <p class="step-sub" id="bagSub"></p>
+    <div class="bags" id="bagGrid"></div>
+    <div class="linkrow">
+      <button class="link" id="btnBagsBack" type="button">Change mug</button>
+      <button class="link" id="btnHowB" type="button">How to play</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen veil" id="scrHow" hidden>
+  <div class="panel">
+    <p class="kicker">How to play</p>
+    <h2>Get the bag out with your fingers</h2>
+    <p class="step-sub">Brew it to the dashed zone on the steep bar, then pinch a corner that’s out of the tea. Touch the tea itself and you’ll burn.</p>
+    <ul class="controls-list" id="howList"></ul>
+    <button class="btn primary" id="btnHowGo" type="button">Start brewing</button>
+    <p class="step-sub" style="text-align:center">Sound on for the full sizzle.</p>
   </div>
 </section>
 
@@ -301,10 +325,12 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Slosh</b><span>Swipe left and right anywhere level with the mug. The tea rocks and the bag rides up the side.</span></li>
       <li><b>Swirl</b><span>Draw circles level with the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
       <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
+      <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea, or give it a quick shake to knock it.</span></li>
       <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
       <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
+    <button class="link" id="btnTilt" type="button" aria-pressed="true">Tilt and shake: on</button>
     <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
   </div>
 </section>
@@ -457,6 +483,36 @@ const sfx = {
   },
 };
 function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+
+// Tilt and shake. While brewing, tilting the phone left or right (from however
+// you were holding it when brewing started) slides the mug that way and sloshes
+// the tea; a sharp shake knocks it like a tap. iPhones ask permission first,
+// which has to come from a tap, so it's requested as a game starts.
+const TILT = { on: true, asked: false, seen: false, g0: null, off: 0, shakeT: 0, prev: null };
+try { TILT.on = localStorage.getItem('ijumh-tilt') !== '0'; } catch (e) {}
+function requestMotion() {
+  if (!TILT.on || TILT.asked) return;
+  TILT.asked = true;
+  for (const Ev of [window.DeviceOrientationEvent, window.DeviceMotionEvent]) {
+    if (Ev && typeof Ev.requestPermission === 'function') Ev.requestPermission().catch(() => {});
+  }
+}
+addEventListener('deviceorientation', e => {
+  if (e.gamma == null) return;
+  TILT.seen = true;
+  if (!TILT.on || !G || G.phase !== 'steep' || G.done) { TILT.g0 = null; TILT.off = 0; return; }
+  if (TILT.g0 == null) TILT.g0 = e.gamma;
+  const d = e.gamma - TILT.g0, dz = 2;
+  TILT.off = clamp((Math.abs(d) < dz ? 0 : d - Math.sign(d) * dz) * 3.2, -80, 80);
+});
+addEventListener('devicemotion', e => {
+  if (!TILT.on || !G || G.phase !== 'steep' || G.done) return;
+  const a = e.acceleration, ag = e.accelerationIncludingGravity;
+  let jolt = 0;
+  if (a && a.x != null) jolt = Math.hypot(a.x, a.y, a.z);
+  else if (ag && ag.x != null) { if (TILT.prev) jolt = Math.hypot(ag.x - TILT.prev.x, ag.y - TILT.prev.y, ag.z - TILT.prev.z); TILT.prev = { x: ag.x, y: ag.y, z: ag.z }; }
+  if (jolt > 15 && G.t - TILT.shakeT > 0.35) { TILT.shakeT = G.t; tapMug(); noteSlosh(); }
+});
 
 /* ---------------- state ---------------- */
 let G = null, GE = null;
@@ -630,7 +686,7 @@ function stepSlosh(dt) {
     const dL = Math.min(G.L, (edge - m.D) * 3 * dt);
     G.L -= dL; G.spillVol += dL;
     const sg = Math.sign(G.s) || 1;
-    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
+    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
     G.spillT = G.t;
     if (Math.random() < 0.7) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 4, vx: sg * rand(40, 170), vy: -rand(40, 200), r: rand(2.5, 5), life: 2, max: 2, col: liquidCss() });
   } else if (edge < m.D - 4 && G.t - G.spillT > 0.4) G.spilling = false;
@@ -704,7 +760,7 @@ function addWater(dv, xr) {
 function overflow(ex) {
   const m = G.mug;
   G.L = m.D; G.spillVol += ex; G.spillT = G.t;
-  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); pop('Overflow!', TOMATO, 36); }
+  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop('Overflow!', TOMATO, 36); }
   for (const sg of [-1, 1]) if (Math.random() < 0.5) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 2, vx: sg * rand(30, 110), vy: -rand(20, 90), r: rand(2.5, 4.5), life: 2, max: 2, col: liquidCss() });
 }
 function splashCounter(dv, wx) {
@@ -778,6 +834,7 @@ function burn(sub, tf) {
 
 function grab() {
   const F = G.finger, b = G.bag, cs = corners(b);
+  vibrate([18, 40, 28]);
   let bi = 0, bd = 1e9;
   cs.forEach((c, i) => { const d = Math.hypot(b.x + c.rx - F.x, b.y + c.ry - F.h); if (d < bd) { bd = d; bi = i; } });
   b.attach = bi; b.phi = b.a + Math.PI / 4 + bi * Math.PI * 2 / b.sh.n; b.phiV = b.w * 0.5; b.state = 'lifted';
@@ -813,6 +870,7 @@ function tapMug() {
   sfx.tap();
   G.ripA = Math.min(7, G.ripA + 3 + G.tapHeat * 0.6);
   if (b.state === 'mug' && b.f > 0.02) { b.vy += (45 * b.f + 15) * kick; b.w += rand(-2, 2) * kick; }
+  if (kick > 0.3) vibrate(10);
   if (G.tapHeat > 3.5 && G.t - G.rattleT > 3) { G.rattleT = G.t; pop(pick(['Stop rattling it!', 'Easy, easy.', 'It’s a mug, not a drum.']), PAPER, 28); }
   pop('tink', CREAM, 22, GE.cx + rand(-60, 60), GE.rimY - 20);
 }
@@ -858,7 +916,9 @@ function update(dt) {
   G.t += dt;
   const m = G.mug, b = G.bag;
 
-  const acc = 220 * (G.oxT - G.ox) - 22 * G.oxV;
+  const oxTarget = G.drag || G.phase !== 'steep' ? G.oxT : clamp(G.oxT + TILT.off, -80, 80);
+  if (Math.abs(TILT.off) > 20) noteSlosh();
+  const acc = 220 * (oxTarget - G.ox) - 22 * G.oxV;
   G.oxV += acc * dt; G.ox += G.oxV * dt; G.oxA = acc;
 
   if (G.phase === 'demo') {
@@ -1055,49 +1115,49 @@ function drawCavity(m, cx, fy) {
   ctx.fillRect(ix, iy, m.W, m.D);
 }
 
-function bagPath(sh, k) {
-  ctx.beginPath();
-  if (sh.round) { ctx.arc(0, 0, sh.R * k, 0, Math.PI * 2); return; }
-  if (sh.n === 4) { const s = B / 2 * k; ctx.roundRect(-s, -s, 2 * s, 2 * s, 6); return; }
+function bagPath(sh, k, c = ctx) {
+  c.beginPath();
+  if (sh.round) { c.arc(0, 0, sh.R * k, 0, Math.PI * 2); return; }
+  if (sh.n === 4) { const s = B / 2 * k; c.roundRect(-s, -s, 2 * s, 2 * s, 6); return; }
   for (let i = 0; i < sh.n; i++) {
     const t = Math.PI / 4 + i * Math.PI * 2 / sh.n, x = sh.R * k * Math.cos(t), y = -sh.R * k * Math.sin(t);
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    i ? c.lineTo(x, y) : c.moveTo(x, y);
   }
-  ctx.closePath();
+  c.closePath();
 }
 // Like a real bag: thin, slightly see-through paper with a pale crimped seal
 // round the edge, and the inside packed solid with tea crumbs showing through.
-function drawBag(b) {
-  const x = GE.cx + b.x, y = GE.fy - b.y, wet = clamp(b.soak, 0, 1), sh = b.sh, inner = sh.n === 3 ? 0.74 : 0.86;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(-b.a);
+function drawBag(b, c = ctx, x = GE.cx + b.x, y = GE.fy - b.y) {
+  const wet = clamp(b.soak, 0, 1), sh = b.sh, inner = sh.n === 3 ? 0.74 : 0.86;
+  c.save(); c.translate(x, y); c.rotate(-b.a);
   const paper = [lerp(244, 176, wet * 0.85), lerp(238, 126, wet * 0.85), lerp(222, 74, wet * 0.85)].map(v => v | 0);
-  ctx.lineJoin = 'round';
-  bagPath(sh, 1);
-  ctx.fillStyle = `rgb(${paper})`; ctx.fill();
-  ctx.save(); ctx.clip();
+  c.lineJoin = 'round';
+  bagPath(sh, 1, c);
+  c.fillStyle = `rgb(${paper})`; c.fill();
+  c.save(); c.clip();
   // Crimp marks across the sealed edge.
-  ctx.strokeStyle = 'rgba(42,22,13,.16)'; ctx.lineWidth = 1.5;
-  for (let r = -B; r < B; r += 5) { ctx.beginPath(); ctx.moveTo(r, -B); ctx.lineTo(r + B * 0.6, B); ctx.stroke(); }
+  c.strokeStyle = 'rgba(42,22,13,.16)'; c.lineWidth = 1.5;
+  for (let r = -B; r < B; r += 5) { c.beginPath(); c.moveTo(r, -B); c.lineTo(r + B * 0.6, B); c.stroke(); }
   // The packed tea.
-  bagPath(sh, inner); ctx.save(); ctx.clip();
+  bagPath(sh, inner, c); c.save(); c.clip();
   const dark = [lerp(74, 34, wet), lerp(42, 18, wet), lerp(20, 8, wet)].map(v => v | 0);
   const mid = [lerp(122, 64, wet), lerp(76, 36, wet), lerp(40, 16, wet)].map(v => v | 0);
   const light = [lerp(168, 98, wet), lerp(116, 58, wet), lerp(64, 26, wet)].map(v => v | 0);
-  ctx.fillStyle = `rgb(${mid})`; ctx.fillRect(-B, -B, 2 * B, 2 * B);
+  c.fillStyle = `rgb(${mid})`; c.fillRect(-B, -B, 2 * B, 2 * B);
   const cols = [`rgb(${dark})`, `rgb(${light})`, `rgb(${mid})`];
-  for (let c = 0; c < 3; c++) {
-    ctx.fillStyle = cols[c]; ctx.beginPath();
-    for (const g of GRAINS) if (g[4] === c) { ctx.moveTo(g[0] + g[2], g[1]); ctx.ellipse(g[0], g[1], g[2], g[2] * 0.62, g[3], 0, Math.PI * 2); }
-    ctx.fill();
+  for (let ci = 0; ci < 3; ci++) {
+    c.fillStyle = cols[ci]; c.beginPath();
+    for (const g of GRAINS) if (g[4] === ci) { c.moveTo(g[0] + g[2], g[1]); c.ellipse(g[0], g[1], g[2], g[2] * 0.62, g[3], 0, Math.PI * 2); }
+    c.fill();
   }
   // Paper fibre over the tea, thinner once it's wet.
-  ctx.fillStyle = `rgba(255,250,236,${lerp(0.22, 0.06, wet)})`; ctx.fillRect(-B, -B, 2 * B, 2 * B);
-  ctx.restore();
-  ctx.setLineDash([3, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(42,22,13,.4)';
-  bagPath(sh, inner); ctx.stroke(); ctx.setLineDash([]);
-  ctx.restore();
-  bagPath(sh, 1); ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
-  ctx.restore();
+  c.fillStyle = `rgba(255,250,236,${lerp(0.22, 0.06, wet)})`; c.fillRect(-B, -B, 2 * B, 2 * B);
+  c.restore();
+  c.setLineDash([3, 4]); c.lineWidth = 1.5; c.strokeStyle = 'rgba(42,22,13,.4)';
+  bagPath(sh, inner, c); c.stroke(); c.setLineDash([]);
+  c.restore();
+  bagPath(sh, 1, c); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
+  c.restore();
 }
 // Tea crumbs: mostly dark and mid-brown, with lighter stalky bits.
 const GRAINS = Array.from({ length: 420 }, () => {
@@ -1380,9 +1440,10 @@ function drawGuides() {
   if (low > 0.01) {
     const m = G.mug, side = GE.cx - m.W / 2 - m.wall - 10, sx = side / 2;
     const ly = GE.rimY + (GE.counterY - GE.rimY) * 0.3;
-    guideLabel(['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
+    const tilt = TILT.on && TILT.seen;
+    guideLabel(tilt ? ['Swipe or tilt', 'to slosh', 'Circle to swirl', 'Tap or shake', 'to knock'] : ['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
     // The ghost touch swipes side to side, then draws circles.
-    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + 120;
+    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + (tilt ? 160 : 120);
     const gx = k < 2 ? sx + Math.sin(k * Math.PI * 2) * Math.min(50, side / 2 - 22) : sx + Math.cos((k - 2) * Math.PI * 2) * r;
     ghostTouch(gx, k < 2 ? gy : gy + Math.sin((k - 2) * Math.PI * 2) * r, low);
   }
@@ -1474,7 +1535,7 @@ function noteSlosh() { if (G.phase === 'steep') G.sloshed = true; }
 function noteReach() { if (G.phase === 'steep') G.reached = true; }
 function showHint(text, secs) { $('hint').textContent = text; $('hint').hidden = false; G.hintUntil = secs ? G.t + secs : 0; }
 
-function setPhase(ph) { G.phase = ph; setPhaseUI(); }
+function setPhase(ph) { G.phase = ph; TILT.g0 = null; TILT.off = 0; setPhaseUI(); }
 let spoonArmed = false, spoonTimer = 0;
 function setPhaseUI() {
   const ph = G.phase;
@@ -1498,17 +1559,63 @@ function measureHud() {
 addEventListener('resize', measureHud);
 
 function startGame(m) {
+  requestMotion();
   G = newState(m, 'drop'); GE = geo();
   for (const k in hudCache) delete hudCache[k];
-  ['scrTitle', 'scrMugs', 'scrResult', 'scrRecords'].forEach(id => $(id).hidden = true);
+  SCREENS.forEach(id => $(id).hidden = true);
   setPhaseUI();
   try { localStorage.setItem('ijumh-mug', m.id); } catch (e) {}
 }
+// The way into a game: pick a mug, then a bag. How to play shows before your
+// first game, and stays one tap away on the title and bag screens.
+const SCREENS = ['scrTitle', 'scrMugs', 'scrBags', 'scrHow', 'scrResult', 'scrRecords'];
+function showScreen(id) { SCREENS.forEach(k => $(k).hidden = k !== id); }
+let chosenMug = MUGS[0], howFrom = 'scrTitle';
 function goMugs() {
   G = demoState(); GE = geo(); setPhaseUI();
-  ['scrTitle', 'scrResult', 'scrRecords'].forEach(id => $(id).hidden = true);
   refreshBests();
-  $('scrMugs').hidden = false;
+  showScreen('scrMugs');
+}
+function goBags(m) {
+  chosenMug = m;
+  $('bagSub').textContent = `For ${m.name}. Easiest first.`;
+  refreshBests();
+  showScreen('scrBags');
+  const cur = document.querySelector('.bagcard[aria-current="true"]'); if (cur) cur.focus();
+}
+function seenHow() { try { return localStorage.getItem('ijumh-how') === '1'; } catch (e) { return false; } }
+function showHow(from) {
+  howFrom = from;
+  $('btnHowGo').textContent = from === 'play' ? 'Start brewing' : 'Back';
+  showScreen('scrHow');
+}
+function pickBag(id) {
+  bagShape = id;
+  try { localStorage.setItem('ijumh-bag', id); } catch (e) {}
+  if (seenHow()) startGame(chosenMug); else showHow('play');
+}
+const BAG_BLURB = {
+  pyramid: 'Floats point-up, so there’s nearly always a corner to pinch.',
+  square: 'Floats flat. Tip it with a slosh or a swirl to get a corner up.',
+  round: 'No corners at all. Pinch the rim where it breaks the surface.',
+};
+function buildBagCards() {
+  const grid = $('bagGrid');
+  grid.innerHTML = '';
+  for (const sh of Object.values(BAGS)) {
+    const btn = document.createElement('button');
+    btn.className = 'bagcard'; btn.type = 'button'; btn.dataset.bag = sh.id;
+    btn.innerHTML = `<canvas width="168" height="168" aria-hidden="true"></canvas>
+      <span class="mname">${sh.name}</span>
+      <span class="mdiff d-${sh.diff.toLowerCase()}">${sh.diff}</span>
+      <span class="mblurb">${BAG_BLURB[sh.id]}</span>
+      <span class="mbest" data-bagbest="${sh.id}"></span>`;
+    btn.addEventListener('click', () => { audioInit(); pickBag(sh.id); });
+    grid.append(btn);
+    const c = btn.querySelector('canvas').getContext('2d');
+    c.scale(1.2, 1.2);
+    drawBag({ sh, a: sh.id === 'pyramid' ? Math.PI / 4 : 0.12, soak: 0 }, c, 70, sh.id === 'pyramid' ? 78 : 70);
+  }
 }
 
 /* ---------------- scoring ---------------- */
@@ -1533,10 +1640,18 @@ function readBests() {
 function writeBests(o) { try { localStorage.setItem('ijumh-best', JSON.stringify(o)); } catch (e) {} }
 function refreshBests() {
   const bests = readBests();
+  // Mug cards: your best on that mug with any bag.
   document.querySelectorAll('[data-best]').forEach(el => {
-    const b = bests[bestKey(el.dataset.best, bagShape)];
-    el.textContent = b ? `Best with a ${BAGS[bagShape].name.toLowerCase()} bag: ${b.score} · ${b.title}` : '';
+    let top = null, with_ = '';
+    for (const sh of Object.values(BAGS)) { const r = bests[bestKey(el.dataset.best, sh.id)]; if (r && (!top || r.score > top.score)) { top = r; with_ = sh.name.toLowerCase(); } }
+    el.textContent = top ? `Best: ${top.score} · ${top.title} (${with_} bag)` : '';
   });
+  // Bag cards: your best with that bag on the chosen mug.
+  document.querySelectorAll('[data-bagbest]').forEach(el => {
+    const r = bests[bestKey(chosenMug.id, el.dataset.bagbest)];
+    el.textContent = r ? `Best on ${chosenMug.name}: ${r.score} · ${r.title}` : '';
+  });
+  document.querySelectorAll('.bagcard').forEach(b => b.setAttribute('aria-current', String(b.dataset.bag === bagShape)));
 }
 
 let lastShare = '';
@@ -1630,14 +1745,6 @@ function drawPreview(cnv, m) {
     c.beginPath(); c.moveTo(sx, sy); c.bezierCurveTo(sx - 14, sy - 20, sx + 14, sy - 36, sx, sy - 56); c.stroke();
   }
 }
-function syncBagPick() {
-  document.querySelectorAll('.bp').forEach(b => b.setAttribute('aria-checked', String(b.dataset.bag === bagShape)));
-}
-document.querySelectorAll('.bp').forEach(btn => btn.addEventListener('click', () => {
-  bagShape = btn.dataset.bag; syncBagPick(); refreshBests();
-  try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
-}));
-syncBagPick();
 function buildMugCards() {
   const grid = $('mugGrid');
   grid.innerHTML = '';
@@ -1646,8 +1753,7 @@ function buildMugCards() {
     const btn = document.createElement('button');
     btn.className = 'mugcard'; btn.id = 'mug-' + m.id; btn.type = 'button';
     btn.innerHTML = `<canvas width="300" height="210" aria-hidden="true"></canvas>
-      <span class="mname">${m.name}</span>
-      <span class="mdiff d-${m.diff.toLowerCase()}">${m.diff}</span>
+      <span class="mhead"><span class="mname">${m.name}</span><span class="mdiff d-${m.diff.toLowerCase()}">${m.diff}</span></span>
       <span class="mblurb">${m.blurb}</span>
       <span class="mstats">
         <span class="st">Heat ${pips(m.stats.heat)}</span>
@@ -1655,7 +1761,7 @@ function buildMugCards() {
         <span class="st">Depth ${pips(m.stats.depth)}</span>
       </span>
       <span class="mbest" data-best="${m.id}"></span>`;
-    btn.addEventListener('click', () => { audioInit(); startGame(m); });
+    btn.addEventListener('click', () => { audioInit(); goBags(m); });
     grid.append(btn);
     drawPreview(btn.querySelector('canvas'), m);
   }
@@ -1754,6 +1860,13 @@ $('btnHelp').addEventListener('click', () => {
   G.drag = null; G.oxT = 0;
   $('scrHelp').hidden = false;
 });
+function syncTilt() { $('btnTilt').textContent = `Tilt and shake: ${TILT.on ? 'on' : 'off'}`; $('btnTilt').setAttribute('aria-pressed', String(TILT.on)); }
+$('btnTilt').addEventListener('click', () => {
+  TILT.on = !TILT.on; TILT.off = 0; TILT.g0 = null; syncTilt();
+  try { localStorage.setItem('ijumh-tilt', TILT.on ? '1' : '0'); } catch (e) {}
+  if (TILT.on) { TILT.asked = false; requestMotion(); }
+});
+syncTilt();
 $('btnResume').addEventListener('click', () => { G.paused = false; $('scrHelp').hidden = true; });
 $('btnSpoon').addEventListener('click', () => {
   if (G.phase !== 'steep') return;
@@ -1788,7 +1901,18 @@ function showRecords(from) {
   $('scrRecords').hidden = false;
   $('btnRecBack').focus();
 }
-$('btnRecords').addEventListener('click', () => showRecords('scrMugs'));
+$('btnRecordsT').addEventListener('click', () => showRecords('scrTitle'));
+$('btnHowT').addEventListener('click', () => showHow('scrTitle'));
+$('btnHowB').addEventListener('click', () => showHow('scrBags'));
+$('btnMugsBack').addEventListener('click', () => showScreen('scrTitle'));
+$('btnBagsBack').addEventListener('click', () => showScreen('scrMugs'));
+$('btnHowGo').addEventListener('click', () => {
+  if (howFrom !== 'play') { showScreen(howFrom); return; }
+  try { localStorage.setItem('ijumh-how', '1'); } catch (e) {}
+  startGame(chosenMug);
+});
+$('howList').innerHTML = document.querySelector('#scrHelp .controls-list').innerHTML;
+buildBagCards();
 $('btnRecordsR').addEventListener('click', () => showRecords('scrResult'));
 $('btnRecBack').addEventListener('click', () => { $('scrRecords').hidden = true; $(recFrom).hidden = false; });
 $('btnCopy').addEventListener('click', () => {

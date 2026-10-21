@@ -261,7 +261,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Slosh</b><span>Swipe left and right beside the mug, not on it. The tea rocks and the bag rides up the side.</span></li>
       <li><b>Swirl</b><span>Draw circles beside the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
       <li><b>Bob</b><span>Tap beside the mug to knock it. The bag bobs up for a moment.</span></li>
-      <li><b>Grab</b><span>Touch inside the mug to lower your finger. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
+      <li><b>Grab</b><span>Press just above the mug and drag down to lower your finger, or touch inside the mug. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
       <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
@@ -1201,7 +1201,7 @@ const HINTS = {
   pour: 'Hold to pour, drag to aim. Fill to the dotted line, then tap “That’ll do”.',
   steep: 'Swipe left and right beside the mug to slosh it. Draw circles to swirl the bag, or tap beside the mug to make it bob.',
 };
-const HINT_REACH = 'Now touch inside the mug to reach in, and pinch a corner that’s poking out of the tea.';
+const HINT_REACH = 'Now press just above the mug and drag down to reach in. Pinch a corner that’s poking out of the tea.';
 function noteSlosh() {
   if (G.phase !== 'steep' || G.sloshed) return;
   G.sloshed = true;
@@ -1403,11 +1403,17 @@ cv.addEventListener('pointerdown', e => {
   capture(e);
   const off = touchOff(e);
   const rx = wx - GE.cx, h = GE.fy - (wy - off);
-  if (Math.abs(rx) < m.W / 2 + 4 && h > 0) {
+  // Pressing just above the mug steers the hand from there, like a joystick:
+  // dragging down to the rim lowers the fingertip to the floor of the mug, so
+  // your own finger never has to cover the mug.
+  const above = wy < GE.rimY && Math.abs(rx) < m.W / 2 + 40;
+  if (above || (Math.abs(rx) < m.W / 2 + 4 && h > 0)) {
     let F = G.finger;
     if (F && (F.flinch || F.grabbed)) return;
-    if (!F) F = G.finger = { x: clamp(rx, -m.W / 2 + 12, m.W / 2 - 12), h: Math.max(m.D + 260, h + 200), slipT: -9, lukeWarned: false };
-    F.active = true; F.pid = e.pointerId; F.tx = rx; F.th = h;
+    const h0 = above ? m.D + 30 : h, x0 = clamp(rx, -m.W / 2 + 12, m.W / 2 - 12);
+    if (!F) F = G.finger = { x: x0, h: Math.max(m.D + 260, h0 + 200), slipT: -9, lukeWarned: false };
+    F.active = true; F.pid = e.pointerId; F.tx = above ? x0 : rx; F.th = h0;
+    F.steer = above ? { px: e.clientX, py: e.clientY, x0, h0, gain: clamp(h0 / Math.max(1, GE.rimY - wy - 8), 1, 5) } : null;
     noteReach();
     return;
   }
@@ -1418,7 +1424,11 @@ cv.addEventListener('pointermove', e => {
   const K = G.kettle;
   if (G.phase === 'pour' && K.holding && e.pointerId === K.pid) K.aim = clamp(e.clientX / S, 40, WW - 40);
   const F = G.finger;
-  if (F && F.active && F.pid === e.pointerId) { F.tx = e.clientX / S - GE.cx; F.th = GE.fy - (e.clientY / S - touchOff(e)); }
+  if (F && F.active && F.pid === e.pointerId) {
+    const st = F.steer;
+    if (st) { F.tx = st.x0 + (e.clientX - st.px) / S; F.th = st.h0 - (e.clientY - st.py) / S * st.gain; }
+    else { F.tx = e.clientX / S - GE.cx; F.th = GE.fy - (e.clientY / S - touchOff(e)); }
+  }
   const d = G.drag;
   if (d && d.pid === e.pointerId) {
     const dx = e.clientX - d.x, dy = e.clientY - d.y, l = Math.hypot(dx, dy);

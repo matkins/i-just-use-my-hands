@@ -73,6 +73,11 @@ body {
   font: 18px var(--f-display); color: var(--ink); cursor: pointer; padding: 0;
 }
 .iconbtn[aria-pressed="false"] { text-decoration: line-through; opacity: .75; }
+.iconcol { display: flex; flex-direction: column; gap: 8px; flex: 0 0 40px; }
+.iconcol .iconbtn { flex: 0 0 40px; width: 40px; height: 40px; }
+.controls-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.controls-list li { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: baseline; font-size: 15px; line-height: 1.4; }
+.controls-list b { font-family: var(--f-display); font-weight: 400; font-size: 16px; }
 
 .controls {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
@@ -208,7 +213,10 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <div class="bar pain"><b id="bPain"></b></div>
     <span class="sub" id="vPain">Pristine</span>
   </div>
-  <button class="iconbtn" id="btnMute" aria-label="Sound" aria-pressed="true">♪</button>
+  <div class="iconcol">
+    <button class="iconbtn" id="btnHelp" aria-label="How to play">?</button>
+    <button class="iconbtn" id="btnMute" aria-label="Sound" aria-pressed="true">♪</button>
+  </div>
 </div>
 
 <div class="hint" id="hint" hidden></div>
@@ -240,6 +248,23 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li>Let it brew. The dashed zone on the steep bar is a perfect cuppa.</li>
       <li>Swipe beside the mug to slosh it, draw circles to swirl, tap it to make the bag bob. When a dry corner pokes out, reach in and pinch it. Touch the tea and you'll know about it.</li>
     </ol>
+  </div>
+</section>
+
+<section class="screen veil" id="scrHelp" hidden>
+  <div class="panel">
+    <p class="kicker">Paused</p>
+    <h2>How to get it out</h2>
+    <ul class="controls-list">
+      <li><b>Drop</b><span>Tap anywhere while the bag swings over the mug.</span></li>
+      <li><b>Pour</b><span>Hold to pour and drag to aim. Pour beside the bag: a soggy bag sinks. Tap “That’ll do” when you reach the dotted line.</span></li>
+      <li><b>Slosh</b><span>Swipe left and right beside the mug, not on it. The tea rocks and the bag rides up the side.</span></li>
+      <li><b>Swirl</b><span>Draw circles beside the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
+      <li><b>Bob</b><span>Tap beside the mug to knock it. The bag bobs up for a moment.</span></li>
+      <li><b>Grab</b><span>Touch inside the mug to lower your finger. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
+      <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
+    </ul>
+    <button class="btn primary" id="btnResume">Back to the tea</button>
   </div>
 </section>
 
@@ -783,7 +808,7 @@ function update(dt) {
 
   if (G.wet && G.L > 2) {
     const heat = clamp((G.T - 40) / 55, 0, 1);
-    G.steamAcc += dt * heat * 16;
+    G.steamAcc += dt * heat * 7;
     while (G.steamAcc > 1) {
       G.steamAcc--;
       const x = rand(-m.W / 2 + 12, m.W / 2 - 12), life = rand(1.6, 2.6);
@@ -793,7 +818,7 @@ function update(dt) {
 
   for (const p of G.parts) {
     p.life -= dt;
-    if (p.kind === 'steam') { p.x += Math.sin(G.t * 2 + p.seed) * 14 * dt; p.y += p.vy * dt; p.r += dt * 12; continue; }
+    if (p.kind === 'steam') { p.x += Math.sin(G.t * 2 + p.seed) * 14 * dt; p.y += p.vy * dt; p.r += dt * 9; continue; }
     if (p.kind === 'bubble') { p.x += p.vx * dt; p.y += p.vy * dt; continue; }
     p.vy += GRAV * dt; p.x += p.vx * dt; p.y += p.vy * dt;
     const rx = p.x - GE.cx;
@@ -864,10 +889,10 @@ function drawMugBack(c, m, cx, fy, counterY) {
   }
   if (m.id === 'travel') {
     if (counterY != null) {
-      const lx = R + 46, ly = counterY;
+      const lx = R + 22, ly = counterY, lw = m.W * 0.8;
       c.fillStyle = m.trim; c.strokeStyle = INK; c.lineWidth = 4;
-      c.beginPath(); c.roundRect ? c.roundRect(lx, ly - 34, m.W + 2 * m.wall, 34, 8) : c.rect(lx, ly - 34, m.W + 2 * m.wall, 34); c.fill(); c.stroke();
-      c.fillStyle = '#4a545a'; c.fillRect(lx + 20, ly - 44, 40, 10); c.strokeRect(lx + 20, ly - 44, 40, 10);
+      c.beginPath(); c.roundRect ? c.roundRect(lx, ly - 30, lw, 30, 8) : c.rect(lx, ly - 30, lw, 30); c.fill(); c.stroke();
+      c.fillStyle = '#4a545a'; c.fillRect(lx + 16, ly - 40, 36, 10); c.strokeRect(lx + 16, ly - 40, 36, 10);
     }
     return;
   }
@@ -976,31 +1001,59 @@ function drawLiquid() {
   ctx.strokeStyle = 'rgba(255,240,215,.45)'; ctx.lineWidth = 3; ctx.stroke();
 }
 
-function capsule(x1, y1, x2, y2, w, col) {
-  ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-}
+// Side-on pinching hand, drawn around the index fingertip at the origin.
+// Every outline is stroked before any fill so the parts read as one silhouette.
 function drawHand(tx, ty, pinch, red) {
-  const dx = 0.2, dy = -0.98, px = 0.98, py = 0.2, fw = 30, r = fw / 2;
-  const at = d => [tx + dx * d, ty + dy * d];
-  const [sx, sy] = at(r), [ex, ey] = at(300);
-  capsule(at(420)[0], at(420)[1], at(1200)[0], at(1200)[1], 170, INK);
-  capsule(at(420)[0], at(420)[1], at(1200)[0], at(1200)[1], 162, MUSTARD);
-  const [cfx, cfy] = at(440);
-  ctx.strokeStyle = 'rgba(42,22,13,.35)'; ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.moveTo(cfx - px * 80, cfy - py * 80); ctx.lineTo(cfx + px * 80, cfy + py * 80); ctx.stroke();
-  const [pmx, pmy] = at(350);
-  ctx.beginPath(); ctx.ellipse(pmx, pmy, 72, 92, Math.atan2(dy, dx) + Math.PI / 2, 0, Math.PI * 2);
-  ctx.fillStyle = SKIN; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke();
-  const thx = tx - 36 + pinch * 22, thy = ty - 30 + pinch * 18, tbx = tx + dx * 260 - 46, tby = ty + dy * 260;
-  capsule(thx, thy, tbx, tby, 40, INK); capsule(thx, thy, tbx, tby, 33, SKIN_SH);
-  capsule(sx, sy, ex, ey, fw + 7, INK); capsule(sx, sy, ex, ey, fw, SKIN);
-  if (red > 0) { const [rx, ry] = at(r + 10 + 60 * red); capsule(sx, sy, rx, ry, fw - 3, `rgba(226,72,42,${0.25 + red * 0.6})`); }
-  ctx.save(); const [nx, ny] = at(19); ctx.translate(nx, ny); ctx.rotate(Math.atan2(dy, dx) + Math.PI / 2);
-  ctx.beginPath(); ctx.ellipse(0, 0, 9, 11, 0, 0, Math.PI * 2); ctx.fillStyle = '#f9e2d2'; ctx.fill();
-  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(42,22,13,.5)'; ctx.stroke(); ctx.restore();
-  ctx.strokeStyle = SKIN_SH; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  for (const d of [95, 180]) { const [cx2, cy2] = at(d); ctx.beginPath(); ctx.moveTo(cx2 - px * 8, cy2 - py * 8); ctx.lineTo(cx2 + px * 8, cy2 + py * 8); ctx.stroke(); }
+  const thumbTip = [lerp(-44, -18, pinch), lerp(-36, -10, pinch)];
+  const shapes = [
+    { cap: [[22, -150], [30, -260]], w: 74, col: SKIN },
+    { cap: [[30, -250], [60, -1200]], w: 96, col: MUSTARD },
+    { blob: true, col: SKIN },
+    { cap: [[-20, -128], [-34, -86], thumbTip], w: 24, col: SKIN },
+    { cap: [[8, -112], [3, -58], [0, -12]], w: 24, col: SKIN },
+  ];
+  const path = s => {
+    ctx.beginPath();
+    if (s.blob) {
+      ctx.moveTo(-26, -120);
+      ctx.bezierCurveTo(-34, -175, -10, -205, 30, -205);
+      ctx.bezierCurveTo(70, -205, 78, -160, 70, -118);
+      ctx.bezierCurveTo(64, -90, 30, -84, 8, -92);
+      ctx.bezierCurveTo(-8, -98, -22, -104, -26, -120);
+      ctx.closePath();
+    } else {
+      ctx.moveTo(s.cap[0][0], s.cap[0][1]);
+      for (let i = 1; i < s.cap.length; i++) ctx.lineTo(s.cap[i][0], s.cap[i][1]);
+    }
+  };
+  ctx.save(); ctx.translate(tx, ty); ctx.rotate(0.08);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const s of shapes) {
+    path(s); ctx.strokeStyle = INK;
+    if (s.blob) { ctx.lineWidth = 7; ctx.stroke(); } else { ctx.lineWidth = s.w + 7; ctx.stroke(); }
+  }
+  for (const s of shapes) {
+    path(s);
+    if (s.blob) { ctx.fillStyle = s.col; ctx.fill(); } else { ctx.strokeStyle = s.col; ctx.lineWidth = s.w; ctx.stroke(); }
+  }
+  ctx.strokeStyle = 'rgba(42,22,13,.3)'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(-18, -262); ctx.lineTo(80, -268); ctx.stroke();
+  for (const [kx, ky] of [[64, -120], [52, -104], [36, -95]]) {
+    ctx.beginPath(); ctx.ellipse(kx, ky, 14, 12, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = SKIN; ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = INK; ctx.stroke();
+  }
+  if (red > 0) {
+    ctx.strokeStyle = `rgba(226,72,42,${0.25 + red * 0.6})`; ctx.lineWidth = 21;
+    ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(1, -12 - 40 * red); ctx.stroke();
+  }
+  for (const [nx, ny, rot] of [[-5, -20, 0.05], [thumbTip[0] - 5, thumbTip[1] - 9, 0.4]]) {
+    ctx.beginPath(); ctx.ellipse(nx, ny, 5, 9, rot, 0, Math.PI * 2);
+    ctx.fillStyle = '#f9e2d2'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(42,22,13,.5)'; ctx.stroke();
+  }
+  ctx.strokeStyle = SKIN_SH; ctx.lineWidth = 3;
+  for (const y of [-48, -78]) { ctx.beginPath(); ctx.moveTo(-6, y); ctx.lineTo(9, y - 1); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(-12, -128); ctx.quadraticCurveTo(-2, -140, 8, -126); ctx.stroke();
+  ctx.restore();
 }
 
 function drawKettle() {
@@ -1043,7 +1096,7 @@ function drawParticles() {
   for (const p of G.parts) {
     const k = p.life / p.max;
     if (p.kind === 'steam') {
-      ctx.fillStyle = `rgba(255,250,240,${0.2 * p.heat * Math.min(1, k * 1.5) * Math.min(1, (1 - k) * 5)})`;
+      ctx.fillStyle = `rgba(255,250,240,${0.13 * p.heat * Math.min(1, k * 1.5) * Math.min(1, (1 - k) * 1.6)})`;
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
     } else if (p.kind === 'bubble') {
       ctx.strokeStyle = `rgba(255,245,225,${k})`; ctx.lineWidth = 2;
@@ -1142,8 +1195,19 @@ function hud() {
 const HINTS = {
   drop: 'Tap to drop the tea bag in.',
   pour: 'Hold to pour, drag to aim. Fill to the dotted line, then tap “That’ll do”.',
-  steep: 'Reach into the mug and pinch a corner that’s out of the tea. Swipe beside the mug to slosh it, draw circles to swirl, tap to make the bag bob.',
+  steep: 'Swipe left and right beside the mug to slosh it. Draw circles to swirl the bag, or tap beside the mug to make it bob.',
 };
+const HINT_REACH = 'Now touch inside the mug to reach in, and pinch a corner that’s poking out of the tea.';
+function noteSlosh() {
+  if (G.phase !== 'steep' || G.sloshed) return;
+  G.sloshed = true;
+  showHint(HINT_REACH, G.reached ? 4 : 0);
+}
+function noteReach() {
+  if (G.phase !== 'steep' || G.reached) return;
+  G.reached = true;
+  if (G.sloshed) G.hintUntil = G.t + 2;
+}
 function showHint(text, secs) { $('hint').textContent = text; $('hint').hidden = false; G.hintUntil = secs ? G.t + secs : 0; }
 
 function setPhase(ph) { G.phase = ph; setPhaseUI(); }
@@ -1156,7 +1220,7 @@ function setPhaseUI() {
   $('btnMilk').hidden = ph !== 'steep' || G.milk;
   $('btnSpoon').hidden = ph !== 'steep';
   spoonArmed = false; $('btnSpoon').textContent = 'Use a spoon'; $('btnSpoon').classList.remove('warn');
-  if (HINTS[ph]) showHint(HINTS[ph], ph === 'steep' ? 9 : 0);
+  if (HINTS[ph]) showHint(HINTS[ph], 0);
   else $('hint').hidden = true;
   if (ph !== 'pour') sfx.pour(0);
 }
@@ -1250,7 +1314,7 @@ function showResults() {
     ['Tea temp', `${Math.round(G.Tgrab)}°C when grabbed`],
     ['Fingers', pain ? `${pain}% scorched · ${G.burns} dip${G.burns === 1 ? '' : 's'}` : 'Untouched'],
     ['Spills', String(G.spills)],
-    ['Milk', G.milk ? 'In with the bag' : 'None yet'],
+    ['Milk', G.milk ? 'In with the bag' : 'None'],
   ];
   $('rStats').innerHTML = '';
   for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; $('rStats').append(dt, dd); }
@@ -1278,7 +1342,7 @@ function drawPreview(cnv, m) {
   c.fillStyle = 'rgba(0,0,0,.15)'; c.beginPath(); c.ellipse(cx, counter + 4, m.W / 2 + m.wall + 30, 9, 0, 0, Math.PI * 2); c.fill();
   drawMugBack(c, m, cx, fy, null);
   drawMugBody(c, m, cx, fy, false);
-  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 5; c.lineCap = 'round';
+  c.strokeStyle = 'rgba(42,22,13,.35)'; c.lineWidth = 5; c.lineCap = 'round';
   for (let i = -1; i <= 1; i++) {
     const sx = cx + i * 36, sy = fy - m.D - 18;
     c.beginPath(); c.moveTo(sx, sy); c.bezierCurveTo(sx - 14, sy - 20, sx + 14, sy - 36, sx, sy - 56); c.stroke();
@@ -1311,7 +1375,7 @@ function buildMugCards() {
 function capture(e) { try { cv.setPointerCapture(e.pointerId); } catch (err) {} }
 function dropBag() {
   const b = G.bag;
-  if (b.state === 'held' && G.hand.up < 5) { b.state = 'falling'; b.vx *= 0.85; b.w = rand(-2, 2) - b.vx * 0.004; $('hint').hidden = true; }
+  if (b.state === 'held' && G.hand.up < 5) { b.state = 'falling'; b.vx *= 0.5; b.w = rand(-2, 2) - b.vx * 0.004; $('hint').hidden = true; }
 }
 cv.addEventListener('pointerdown', e => {
   audioInit();
@@ -1330,6 +1394,7 @@ cv.addEventListener('pointerdown', e => {
     if (F && (F.flinch || F.grabbed)) return;
     if (!F) F = G.finger = { x: clamp(rx, -m.W / 2 + 12, m.W / 2 - 12), h: Math.max(m.D + 260, h + 200), slipT: -9, lukeWarned: false };
     F.active = true; F.pid = e.pointerId; F.tx = rx; F.th = h; F.off = off;
+    noteReach();
     return;
   }
   G.drag = { pid: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), v: null };
@@ -1345,6 +1410,7 @@ cv.addEventListener('pointermove', e => {
     const dx = e.clientX - d.x, dy = e.clientY - d.y, l = Math.hypot(dx, dy);
     G.oxT = clamp(G.oxT + dx / S, -80, 80);
     if (d.v && l > 1.5) spin(Math.atan2(d.v.x * dy - d.v.y * dx, d.v.x * dx + d.v.y * dy));
+    if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 40) noteSlosh();
     if (l > 1.5) d.v = { x: dx, y: dy };
     d.x = e.clientX; d.y = e.clientY;
   }
@@ -1358,7 +1424,7 @@ function release(e) {
   const d = G.drag;
   if (d && d.pid === e.pointerId) {
     G.oxT = 0;
-    if (G.phase === 'steep' && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 10 && performance.now() - d.t0 < 300) tapMug();
+    if (G.phase === 'steep' && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 10 && performance.now() - d.t0 < 300) { tapMug(); noteSlosh(); }
     G.drag = null;
   }
 }
@@ -1380,6 +1446,15 @@ addEventListener('keyup', e => { if (G && (e.key === 'ArrowLeft' || e.key === 'A
 $('btnStart').addEventListener('click', () => { audioInit(); goMugs(); });
 $('btnDone').addEventListener('click', () => { if (G.phase === 'pour' && G.L >= G.mug.D * 0.2) { G.kettle.holding = false; setPhase('steep'); } });
 $('btnMilk').addEventListener('click', addMilk);
+$('btnHelp').addEventListener('click', () => {
+  if (G.phase === 'demo') return;
+  G.paused = true; sfx.pour(0);
+  if (G.kettle) G.kettle.holding = false;
+  if (G.finger && G.finger.active) { G.finger.active = false; G.finger.pid = null; }
+  G.drag = null; G.oxT = 0;
+  $('scrHelp').hidden = false;
+});
+$('btnResume').addEventListener('click', () => { G.paused = false; $('scrHelp').hidden = true; });
 $('btnSpoon').addEventListener('click', () => {
   if (G.phase !== 'steep') return;
   const btn = $('btnSpoon');
@@ -1418,7 +1493,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.033, (now - last) / 1000); last = now;
   GE = geo();
-  update(dt);
+  if (!G.paused) update(dt);
   GE = geo();
   render();
   hud();

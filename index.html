@@ -109,6 +109,8 @@ body {
   pointer-events: none;
 }
 .controls .btn, .controls .quiet { pointer-events: auto; }
+/* Sits on its own line under the main buttons. */
+.controls .quiet { order: 2; margin: 0 calc(50% - 90px); }
 .quiet {
   align-self: center; background: rgba(42,22,13,.12); border: 0; border-radius: 999px; padding: 7px 13px;
   font: 600 13px var(--f-body); color: rgba(42,22,13,.75); cursor: pointer; touch-action: manipulation;
@@ -385,7 +387,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <h2>Settings</h2>
     <ul class="settings">
       <li><span><b>Sound</b><small>Sizzles, pours, plops and yelps.</small></span><button class="toggle" id="setSound" type="button" role="switch" aria-label="Sound"></button></li>
-      <li><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Android only, and it needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
+      <li id="rowVib" hidden><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
       <li><span><b>Tilt to slosh</b><small>Tilt your phone left and right to slide the mug while it brews.</small></span><button class="toggle" id="setTilt" type="button" role="switch" aria-label="Tilt to slosh"></button></li>
     </ul>
     <div class="reset">
@@ -1981,6 +1983,8 @@ function openSettings(from) {
   if (from === 'game') { pauseGame(); $('scrSettings').hidden = false; } else showScreen('scrSettings');
 }
 const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} };
+// Only Android browsers can vibrate, so only they get the switch.
+$('rowVib').hidden = !('vibrate' in navigator && /Android/i.test(navigator.userAgent));
 $('setSound').addEventListener('click', () => {
   audioInit();
   AU.muted = !AU.muted;

@@ -142,7 +142,7 @@ h1 span { display: block; }
 h1 span + span { color: var(--mustard); transform: rotate(-3deg); }
 .lede { margin: 6px 0 4px; max-width: 30ch; color: var(--cream); font-size: 18px; font-weight: 600; line-height: 1.4; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .small { margin: 0; color: var(--cream); opacity: .8; font-size: 13px; }
-.credit { font-size: 11px; opacity: .6; }
+.credit { font-size: 12px; color: var(--dim); opacity: 1; }
 .credit a { color: inherit; }
 h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clamp(30px, 8vw, 40px); line-height: 1; text-wrap: balance; }
 
@@ -236,7 +236,6 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <p class="lede">Get the tea bag out of a freshly boiled cuppa. No spoon. Try not to cook your fingertips.</p>
     <button class="btn primary big" id="btnStart">Put the kettle on</button>
     <p class="small">Sound on for the full sizzle.</p>
-    <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
   </div>
 </section>
 
@@ -268,6 +267,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
+    <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
   </div>
 </section>
 
@@ -406,7 +406,7 @@ function newState(m, phase) {
     pain: 0, burns: 0, spills: 0, spillVol: 0, spilling: false, spillT: 0, misses: 0,
     milk: false, milkT: -9, puddleWarned: false, steamAcc: 0, flash: 0, shake: 0,
     bag: { x: 0, y: 0, a: Math.PI / 4, vx: 0, vy: 0, w: 0, soak: 0, f: 0, state: 'held', seed: Math.random() * 10, settle: 0, inT: 0, tableT: 0, attach: 0, phi: 0, phiV: 0 },
-    hand: { ph: rand(0, 6), x: 0, tipH: m.D + 210, up: 0 },
+    hand: { ph: rand(0, 6), x: 0, tipH: m.D + 210, up: 0, pz: 1 },
     kettle: { aim: null, p: 0, holding: false, pid: null, leave: 0 },
     finger: null, drag: null, parts: [], pops: [], puddles: [],
     bubbleT: rand(5, 9), nextDrip: 0, hintUntil: 0,
@@ -569,6 +569,7 @@ function stepSlosh(dt) {
 /* ---------------- phases ---------------- */
 function updateDrop(dt) {
   const b = G.bag, m = G.mug, h = G.hand;
+  h.pz += ((b.state === 'held' ? 1 : 0) - h.pz) * (1 - Math.exp(-dt * 25));
   const A = Math.min(m.W / 2 + 110, WW / 2 - 70), sp = 1.7 * m.swing;
   h.ph += dt * sp;
   h.x = A * Math.sin(h.ph);
@@ -658,6 +659,7 @@ function updatePour(dt) {
 /* ---------------- fingers ---------------- */
 function stepFinger(dt) {
   const F = G.finger; if (!F) return;
+  F.pz = (F.pz || 0) + ((F.grabbed ? 1 : 0) - (F.pz || 0)) * (1 - Math.exp(-dt * 25));
   const m = G.mug;
   if (F.grabbed) { liftStep(dt); return; }
   if (F.flinch || !F.active) { F.h += (F.flinch ? 1500 : 1000) * dt; if (F.h > m.D + 700) G.finger = null; return; }
@@ -1010,6 +1012,10 @@ const HAND_PATH = 'M48347.67 16336.27c327.53,24.39 290.47,522.43 -37.1,498.04 -1
 // outline encloses (with the open end of the forearm closed off) is skin.
 // Icon units: pinch point between the fingertips, and the end of the forearm.
 const HAND_PINCH = [5600, 33900], HAND_K = 0.0068, HAND_RES = 3, HAND_ROT = -0.5;
+// The index finger is cut out along the crease where it meets the curled fingers,
+// so it can swing about its knuckle to open and close the pinch.
+const HAND_CUT = [[12500, 10000], [12500, 16500], [12000, 20250], [10400, 25000], [11100, 27600], [10000, 30250], [6000, 34500], [4500, 40000], [-1000, 40000], [-1000, 10000]];
+const HAND_PIVOT = [11800, 21500], HAND_OPEN = 0.085, HAND_SHUT = -0.2;
 function buildHandSprites() {
   const vw = 48600, vh = 38400, k = HAND_K * HAND_RES;
   const w = Math.ceil(vw * k), h = Math.ceil(vh * k);
@@ -1039,23 +1045,45 @@ function buildHandSprites() {
   uc.fillStyle = g; uc.fillRect(0, 0, w, h);
   uc.globalCompositeOperation = 'source-over';
   uc.save(); uc.scale(k, k); uc.fillStyle = uc.strokeStyle = INK; uc.lineWidth = 160; uc.lineJoin = 'round'; uc.fill(path); uc.stroke(path); uc.restore();
-  return { base, burn };
+  const cut = new Path2D();
+  HAND_CUT.forEach(([x, y], i) => i ? cut.lineTo(x, y) : cut.moveTo(x, y));
+  cut.closePath();
+  // The finger keeps a little overlap past the cut so no gap opens as it swings.
+  const split = (src, finger) => {
+    const mask = mk(), mc = mask.getContext('2d');
+    mc.scale(k, k); mc.fill(cut);
+    if (finger) { mc.lineWidth = 500; mc.lineJoin = 'round'; mc.stroke(cut); }
+    const c = mk(), cc = c.getContext('2d');
+    cc.drawImage(src, 0, 0); cc.globalCompositeOperation = finger ? 'destination-in' : 'destination-out';
+    cc.drawImage(mask, 0, 0);
+    return c;
+  };
+  // A strip of plain skin just inside the crease fills the joint as the finger opens.
+  const rest = split(base, false), joint = tint(SKIN), jc = joint.getContext('2d');
+  const crease = HAND_CUT.slice(1, 5), strip = new Path2D();
+  [...crease, ...crease.map(([x, y]) => [x - 1600, y]).reverse()].forEach(([x, y], i) => i ? strip.lineTo(x, y) : strip.moveTo(x, y));
+  jc.globalCompositeOperation = 'destination-in'; jc.scale(k, k); jc.fill(strip);
+  const rc = rest.getContext('2d'); rc.globalCompositeOperation = 'destination-over'; rc.drawImage(joint, 0, 0);
+  return { rest, finger: split(base, true), restBurn: split(burn, false), fingerBurn: split(burn, true) };
 }
 
 let HAND = null;
 // Drawn around the pinch point between the fingertips, with the fingers turned down
 // into the mug and the forearm running off to the upper right into a sleeve.
-function drawHand(tx, ty, red) {
+function drawHand(tx, ty, pinch, red) {
   if (!HAND) HAND = buildHandSprites();
   const k = HAND_K, ox = -HAND_PINCH[0] * k, oy = -HAND_PINCH[1] * k;
-  const ax = 48000 * k + ox, ay = 23050 * k + oy;
+  const ax = 48000 * k + ox, ay = 23050 * k + oy, px = HAND_PIVOT[0] * k + ox, py = HAND_PIVOT[1] * k + oy;
+  const piece = (img, alpha) => { ctx.globalAlpha = alpha; ctx.drawImage(img, ox, oy, img.width / HAND_RES, img.height / HAND_RES); };
+  const burnA = red > 0 ? 0.25 + red * 0.6 : 0;
   ctx.save(); ctx.translate(tx, ty); ctx.rotate(HAND_ROT);
-  ctx.drawImage(HAND.base, ox, oy, HAND.base.width / HAND_RES, HAND.base.height / HAND_RES);
-  if (red > 0) {
-    ctx.globalAlpha = 0.25 + red * 0.6;
-    ctx.drawImage(HAND.burn, ox, oy, HAND.burn.width / HAND_RES, HAND.burn.height / HAND_RES);
-    ctx.globalAlpha = 1;
-  }
+  piece(HAND.rest, 1);
+  if (burnA) piece(HAND.restBurn, burnA);
+  ctx.save(); ctx.translate(px, py); ctx.rotate(lerp(HAND_OPEN, HAND_SHUT, pinch)); ctx.translate(-px, -py);
+  piece(HAND.finger, 1);
+  if (burnA) piece(HAND.fingerBurn, burnA);
+  ctx.restore();
+  ctx.globalAlpha = 1;
   ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + 1500, ay);
   ctx.strokeStyle = INK; ctx.lineWidth = 107; ctx.stroke();
@@ -1173,9 +1201,9 @@ function render() {
 
   drawParticles();
   if (G.phase === 'drop' || (G.hand.up > 0 && G.hand.up < 1500 && G.phase === 'pour')) {
-    drawHand(cx + G.hand.x, fy - G.hand.tipH - G.hand.up, 0);
+    drawHand(cx + G.hand.x, fy - G.hand.tipH - G.hand.up, G.hand.pz, 0);
   }
-  if (G.finger) { const F = G.finger; drawHand(cx + F.x, fy - F.h, G.pain / 100); }
+  if (G.finger) { const F = G.finger; drawHand(cx + F.x, fy - F.h, F.pz || 0, G.pain / 100); }
   if (G.phase !== 'drop' && G.phase !== 'demo' && G.kettle.leave < 1) drawKettle();
   drawPops();
   ctx.restore();

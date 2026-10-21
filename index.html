@@ -310,7 +310,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <h2>Get the bag out with your fingers</h2>
     <p class="step-sub">Brew it to the dashed zone on the steep bar, then pinch a corner that’s out of the tea. Touch the tea itself and you’ll burn.</p>
     <ul class="controls-list" id="howList"></ul>
-    <button class="btn primary" id="btnHowGo" type="button">Start brewing</button>
+    <button class="btn primary" id="btnHowGo" type="button">Back</button>
     <p class="step-sub" style="text-align:center">Sound on for the full sizzle.</p>
   </div>
 </section>
@@ -325,12 +325,14 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Slosh</b><span>Swipe left and right anywhere level with the mug. The tea rocks and the bag rides up the side.</span></li>
       <li><b>Swirl</b><span>Draw circles level with the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
       <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
-      <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea, or give it a quick shake to knock it.</span></li>
+      <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea.</span></li>
       <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
       <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
-    <button class="link" id="btnTilt" type="button" aria-pressed="true">Tilt and shake: on</button>
+    <button class="link" id="btnTilt" type="button" aria-pressed="true">Tilt to slosh: on</button>
+    <button class="link" id="btnVib" type="button">Test vibration</button>
+    <p class="step-sub" id="vibNote" hidden></p>
     <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
   </div>
 </section>
@@ -482,20 +484,21 @@ const sfx = {
     AU.pourF.frequency.setTargetAtTime(450 + p * 500 + (G ? G.L / G.mug.D : 0) * 1100, t, 0.1);
   },
 };
+// Buzzes need at least ~25 ms to be felt on most phones. Only Android browsers
+// support this; iPhones ignore it.
 function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 
-// Tilt and shake. While brewing, tilting the phone left or right (from however
-// you were holding it when brewing started) slides the mug that way and sloshes
-// the tea; a sharp shake knocks it like a tap. iPhones ask permission first,
-// which has to come from a tap, so it's requested as a game starts.
-const TILT = { on: true, asked: false, seen: false, g0: null, off: 0, shakeT: 0, prev: null };
+// Tilt. While brewing, tilting the phone left or right (from however you were
+// holding it when brewing started) slides the mug that way and sloshes the tea.
+// iPhones ask permission first, which has to come from a tap, so it's requested
+// as a game starts.
+const TILT = { on: true, asked: false, seen: false, g0: null, off: 0 };
 try { TILT.on = localStorage.getItem('ijumh-tilt') !== '0'; } catch (e) {}
 function requestMotion() {
   if (!TILT.on || TILT.asked) return;
   TILT.asked = true;
-  for (const Ev of [window.DeviceOrientationEvent, window.DeviceMotionEvent]) {
-    if (Ev && typeof Ev.requestPermission === 'function') Ev.requestPermission().catch(() => {});
-  }
+  const Ev = window.DeviceOrientationEvent;
+  if (Ev && typeof Ev.requestPermission === 'function') Ev.requestPermission().catch(() => {});
 }
 addEventListener('deviceorientation', e => {
   if (e.gamma == null) return;
@@ -504,14 +507,6 @@ addEventListener('deviceorientation', e => {
   if (TILT.g0 == null) TILT.g0 = e.gamma;
   const d = e.gamma - TILT.g0, dz = 2;
   TILT.off = clamp((Math.abs(d) < dz ? 0 : d - Math.sign(d) * dz) * 3.2, -80, 80);
-});
-addEventListener('devicemotion', e => {
-  if (!TILT.on || !G || G.phase !== 'steep' || G.done) return;
-  const a = e.acceleration, ag = e.accelerationIncludingGravity;
-  let jolt = 0;
-  if (a && a.x != null) jolt = Math.hypot(a.x, a.y, a.z);
-  else if (ag && ag.x != null) { if (TILT.prev) jolt = Math.hypot(ag.x - TILT.prev.x, ag.y - TILT.prev.y, ag.z - TILT.prev.z); TILT.prev = { x: ag.x, y: ag.y, z: ag.z }; }
-  if (jolt > 15 && G.t - TILT.shakeT > 0.35) { TILT.shakeT = G.t; tapMug(); noteSlosh(); }
 });
 
 /* ---------------- state ---------------- */
@@ -686,7 +681,7 @@ function stepSlosh(dt) {
     const dL = Math.min(G.L, (edge - m.D) * 3 * dt);
     G.L -= dL; G.spillVol += dL;
     const sg = Math.sign(G.s) || 1;
-    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
+    if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(45); pop(pick(['SPLOSH!', 'Over the side!', 'Mind the counter!']), PAPER, 32); }
     G.spillT = G.t;
     if (Math.random() < 0.7) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 4, vx: sg * rand(40, 170), vy: -rand(40, 200), r: rand(2.5, 5), life: 2, max: 2, col: liquidCss() });
   } else if (edge < m.D - 4 && G.t - G.spillT > 0.4) G.spilling = false;
@@ -760,7 +755,7 @@ function addWater(dv, xr) {
 function overflow(ex) {
   const m = G.mug;
   G.L = m.D; G.spillVol += ex; G.spillT = G.t;
-  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(30); pop('Overflow!', TOMATO, 36); }
+  if (!G.spilling) { G.spilling = true; G.spills++; sfx.splash(); vibrate(45); pop('Overflow!', TOMATO, 36); }
   for (const sg of [-1, 1]) if (Math.random() < 0.5) G.parts.push({ kind: 'drop', x: GE.cx + sg * (m.W / 2 + m.wall * 0.5), y: GE.rimY - 2, vx: sg * rand(30, 110), vy: -rand(20, 90), r: rand(2.5, 4.5), life: 2, max: 2, col: liquidCss() });
 }
 function splashCounter(dv, wx) {
@@ -826,7 +821,7 @@ function burn(sub, tf) {
   G.burns++;
   G.shake = REDUCED ? 0 : 12; G.flash = 1;
   G.ripA = Math.min(7, G.ripA + 3);
-  sfx.sizzle(); sfx.ow(); vibrate(90);
+  sfx.sizzle(); sfx.ow(); vibrate(140);
   splashAt(GE.cx + F.x, GE.fy - surf(F.x), 6, liquidCss(), 260);
   if (G.pain >= 100) { pop('MEDIUM RARE', TOMATO, 50); finish('fail'); }
   else pop(pick(['OW!', 'TSSS!', 'AAARGH!', 'HOT HOT HOT', 'WHY?!', 'MY FINGER!']), TOMATO, 44);
@@ -834,7 +829,7 @@ function burn(sub, tf) {
 
 function grab() {
   const F = G.finger, b = G.bag, cs = corners(b);
-  vibrate([18, 40, 28]);
+  vibrate([35, 60, 45]);
   let bi = 0, bd = 1e9;
   cs.forEach((c, i) => { const d = Math.hypot(b.x + c.rx - F.x, b.y + c.ry - F.h); if (d < bd) { bd = d; bi = i; } });
   b.attach = bi; b.phi = b.a + Math.PI / 4 + bi * Math.PI * 2 / b.sh.n; b.phiV = b.w * 0.5; b.state = 'lifted';
@@ -870,7 +865,7 @@ function tapMug() {
   sfx.tap();
   G.ripA = Math.min(7, G.ripA + 3 + G.tapHeat * 0.6);
   if (b.state === 'mug' && b.f > 0.02) { b.vy += (45 * b.f + 15) * kick; b.w += rand(-2, 2) * kick; }
-  if (kick > 0.3) vibrate(10);
+  if (kick > 0.3) vibrate(25);
   if (G.tapHeat > 3.5 && G.t - G.rattleT > 3) { G.rattleT = G.t; pop(pick(['Stop rattling it!', 'Easy, easy.', 'It’s a mug, not a drum.']), PAPER, 28); }
   pop('tink', CREAM, 22, GE.cx + rand(-60, 60), GE.rimY - 20);
 }
@@ -1441,9 +1436,9 @@ function drawGuides() {
     const m = G.mug, side = GE.cx - m.W / 2 - m.wall - 10, sx = side / 2;
     const ly = GE.rimY + (GE.counterY - GE.rimY) * 0.3;
     const tilt = TILT.on && TILT.seen;
-    guideLabel(tilt ? ['Swipe or tilt', 'to slosh', 'Circle to swirl', 'Tap or shake', 'to knock'] : ['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
+    guideLabel(tilt ? ['Swipe or tilt', 'to slosh', 'Circle to swirl', 'Tap to knock'] : ['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
     // The ghost touch swipes side to side, then draws circles.
-    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + (tilt ? 160 : 120);
+    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + (tilt ? 140 : 120);
     const gx = k < 2 ? sx + Math.sin(k * Math.PI * 2) * Math.min(50, side / 2 - 22) : sx + Math.cos((k - 2) * Math.PI * 2) * r;
     ghostTouch(gx, k < 2 ? gy : gy + Math.sin((k - 2) * Math.PI * 2) * r, low);
   }
@@ -1566,8 +1561,8 @@ function startGame(m) {
   setPhaseUI();
   try { localStorage.setItem('ijumh-mug', m.id); } catch (e) {}
 }
-// The way into a game: pick a mug, then a bag. How to play shows before your
-// first game, and stays one tap away on the title and bag screens.
+// The way into a game: pick a mug, then a bag, and go. The in-game hints teach
+// the controls; How to play is one tap away on the title and bag screens.
 const SCREENS = ['scrTitle', 'scrMugs', 'scrBags', 'scrHow', 'scrResult', 'scrRecords'];
 function showScreen(id) { SCREENS.forEach(k => $(k).hidden = k !== id); }
 let chosenMug = MUGS[0], howFrom = 'scrTitle';
@@ -1583,16 +1578,14 @@ function goBags(m) {
   showScreen('scrBags');
   const cur = document.querySelector('.bagcard[aria-current="true"]'); if (cur) cur.focus();
 }
-function seenHow() { try { return localStorage.getItem('ijumh-how') === '1'; } catch (e) { return false; } }
 function showHow(from) {
   howFrom = from;
-  $('btnHowGo').textContent = from === 'play' ? 'Start brewing' : 'Back';
   showScreen('scrHow');
 }
 function pickBag(id) {
   bagShape = id;
   try { localStorage.setItem('ijumh-bag', id); } catch (e) {}
-  if (seenHow()) startGame(chosenMug); else showHow('play');
+  startGame(chosenMug);
 }
 const BAG_BLURB = {
   pyramid: 'Floats point-up, so there’s nearly always a corner to pinch.',
@@ -1860,13 +1853,23 @@ $('btnHelp').addEventListener('click', () => {
   G.drag = null; G.oxT = 0;
   $('scrHelp').hidden = false;
 });
-function syncTilt() { $('btnTilt').textContent = `Tilt and shake: ${TILT.on ? 'on' : 'off'}`; $('btnTilt').setAttribute('aria-pressed', String(TILT.on)); }
+function syncTilt() { $('btnTilt').textContent = `Tilt to slosh: ${TILT.on ? 'on' : 'off'}`; $('btnTilt').setAttribute('aria-pressed', String(TILT.on)); }
 $('btnTilt').addEventListener('click', () => {
   TILT.on = !TILT.on; TILT.off = 0; TILT.g0 = null; syncTilt();
   try { localStorage.setItem('ijumh-tilt', TILT.on ? '1' : '0'); } catch (e) {}
   if (TILT.on) { TILT.asked = false; requestMotion(); }
 });
 syncTilt();
+$('btnVib').addEventListener('click', () => {
+  let msg;
+  if (!('vibrate' in navigator)) msg = 'This browser can’t vibrate. iPhones never can from a web page.';
+  else {
+    let ok = false; try { ok = navigator.vibrate([200, 100, 200]); } catch (e) {}
+    msg = ok ? 'Buzzing now. If you felt nothing, check your phone’s vibration or touch feedback settings, and that battery saver and Do Not Disturb are off.'
+      : 'Your browser refused to vibrate.';
+  }
+  $('vibNote').textContent = msg; $('vibNote').hidden = false;
+});
 $('btnResume').addEventListener('click', () => { G.paused = false; $('scrHelp').hidden = true; });
 $('btnSpoon').addEventListener('click', () => {
   if (G.phase !== 'steep') return;
@@ -1906,11 +1909,7 @@ $('btnHowT').addEventListener('click', () => showHow('scrTitle'));
 $('btnHowB').addEventListener('click', () => showHow('scrBags'));
 $('btnMugsBack').addEventListener('click', () => showScreen('scrTitle'));
 $('btnBagsBack').addEventListener('click', () => showScreen('scrMugs'));
-$('btnHowGo').addEventListener('click', () => {
-  if (howFrom !== 'play') { showScreen(howFrom); return; }
-  try { localStorage.setItem('ijumh-how', '1'); } catch (e) {}
-  startGame(chosenMug);
-});
+$('btnHowGo').addEventListener('click', () => showScreen(howFrom));
 $('howList').innerHTML = document.querySelector('#scrHelp .controls-list').innerHTML;
 buildBagCards();
 $('btnRecordsR').addEventListener('click', () => showRecords('scrResult'));

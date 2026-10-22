@@ -172,7 +172,19 @@ body {
   box-shadow: 0 8px 0 var(--ink);
   padding: 22px 20px 24px; display: flex; flex-direction: column; gap: 14px;
 }
-.titleblock { margin: 0 auto auto; max-width: 560px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 4vh; }
+/* The title screen lets touches through to the mug; only its buttons take them. */
+#scrTitle { pointer-events: none; overflow: hidden; }
+#scrTitle button { pointer-events: auto; }
+.titlefoot { margin: auto auto 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+/* It sits on the worktop, so it's dark to stand out whatever the theme. */
+#btnStart { background: var(--ink); color: var(--mustard); box-shadow: 0 5px 0 rgba(0,0,0,.45); }
+/* Nudges a first-timer who hasn't spotted the way in. */
+.btn.nudge { animation: nudge 1.6s ease-in-out infinite; }
+@keyframes nudge {
+  0%, 100% { transform: scale(1); box-shadow: 0 5px 0 rgba(0,0,0,.45), 0 0 0 0 rgba(255,250,240,.9); }
+  40% { transform: scale(1.07); box-shadow: 0 5px 0 rgba(0,0,0,.45), 0 0 0 14px rgba(255,250,240,0); }
+}
+.titleblock { margin: 0 auto; max-width: 560px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 4vh; }
 .kicker { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mustard); }
 .panel .kicker { color: var(--dim); }
 h1 {
@@ -191,10 +203,10 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 
 .step-sub { margin: 0; font-size: 14px; line-height: 1.4; color: var(--dim); }
 .linkrow { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
-.titleblock .linkrow { gap: 10px; }
+.titlefoot .linkrow { gap: 10px; }
 .titleblock .lede, .titleblock .starcount { background: rgba(42,22,13,.55); border-radius: 14px; padding: 6px 14px; }
 .titleblock .starcount { border-radius: 999px; padding: 4px 12px; }
-.titleblock .link { color: var(--cream); font-size: 15px; text-decoration: none; background: rgba(42,22,13,.78); border-radius: 999px; padding: 8px 16px; }
+.titlefoot .link { color: var(--cream); font-size: 15px; text-decoration: none; background: rgba(42,22,13,.78); border-radius: 999px; padding: 8px 16px; }
 .bags { display: grid; gap: 10px; }
 .bagcard {
   display: grid; grid-template-columns: 84px 1fr; gap: 4px 12px; align-items: center; text-align: left;
@@ -297,8 +309,8 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   .mugcard .mname { font-size: 16px; }
   .mugcard .mstats { gap: 5px; }
   .mugcard .st { font-size: 8.5px; letter-spacing: .03em; }
-  .titleblock .linkrow { gap: 6px; }
-  .titleblock .link { font-size: 14px; padding: 7px 11px; }
+  .titlefoot .linkrow { gap: 6px; }
+  .titlefoot .link { font-size: 14px; padding: 7px 11px; }
   .rec th { font-size: 9.5px; letter-spacing: .03em; }
   .rec th.mug { font-size: 13px; width: 27%; }
   .rec .tt { font-size: 9.5px; padding: 0; }
@@ -314,8 +326,8 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   .controls-list li { grid-template-columns: 64px 1fr; gap: 10px; font-size: 14px; }
 }
 @media (max-width: 340px) {
-  .titleblock .link { font-size: 13px; padding: 6px 9px; }
-  .titleblock .linkrow { gap: 5px; }
+  .titlefoot .link { font-size: 13px; padding: 6px 9px; }
+  .titlefoot .linkrow { gap: 5px; }
 }
 @media (max-height: 640px) {
   .titleblock { gap: 8px; padding-top: 2vh; }
@@ -324,6 +336,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 }
 @media (prefers-reduced-motion: reduce) {
   .btn, .mugcard { transition: none; }
+  .btn.nudge { animation: none; outline: 4px solid var(--cream); outline-offset: 3px; }
 }
 </style>
 </head>
@@ -366,8 +379,9 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   <div class="titleblock">
     <p class="kicker">A game of thermal courage</p>
     <h1><span>I just use</span><span>my hands</span></h1>
-    <p class="lede">Get the tea bag out of a freshly boiled cuppa. No spoon. Try not to cook your fingertips.</p>
     <p class="starcount" id="starCount" hidden></p>
+  </div>
+  <div class="titlefoot">
     <button class="btn primary big" id="btnStart">Put the kettle on</button>
     <div class="linkrow">
       <button class="link" id="btnHowT" type="button">How to play</button>
@@ -765,7 +779,7 @@ function requestMotion() {
 addEventListener('deviceorientation', e => {
   if (e.gamma == null) return;
   TILT.seen = true;
-  if (!TILT.on || !G || G.phase !== 'steep' || G.done) { TILT.g0 = null; TILT.off = 0; return; }
+  if (!TILT.on || !G || !playable() || G.done) { TILT.g0 = null; TILT.off = 0; return; }
   if (TILT.g0 == null) TILT.g0 = e.gamma;
   const d = e.gamma - TILT.g0, dz = 2;
   TILT.off = clamp((Math.abs(d) < dz ? 0 : d - Math.sign(d) * dz) * 3.2, -80, 80);
@@ -795,12 +809,21 @@ function demoState() {
   return g;
 }
 
+// The title screen's mug is a toy: slosh, swirl, knock and tilt all work on it.
+const onTitle = () => G.phase === 'demo' && !$('scrTitle').hidden;
+const playable = () => G.phase === 'steep' || onTitle();
 function geo() {
   const m = G.mug;
   let counterY = WH - Math.max(150, WH * 0.2);
-  // On the title screen, sit the mug low enough to clear the title and buttons.
-  const tb = G.phase === 'demo' && !$('scrTitle').hidden ? document.querySelector('#scrTitle .titleblock').getBoundingClientRect() : null;
-  if (tb && tb.height) counterY = clamp(tb.bottom / S + m.D + m.base + 30, counterY, WH - 40);
+  // On the title screen, sit the mug between the title and the buttons, with the
+  // buttons on the worktop under it.
+  if (onTitle()) {
+    const tb = document.querySelector('#scrTitle .titleblock').getBoundingClientRect(), ft = document.querySelector('#scrTitle .titlefoot').getBoundingClientRect();
+    if (tb.height && ft.height) {
+      const lo = tb.bottom / S + m.D + m.base + 24, hi = ft.top / S - 14;
+      counterY = lo <= hi ? clamp(counterY, lo, hi) : (lo + hi) / 2;
+    }
+  }
   const fy = counterY - m.base - (m.saucer ? 14 : 0);
   return { cx: WW / 2 + G.ox, fy, rimY: fy - m.D, counterY };
 }
@@ -1178,13 +1201,15 @@ function update(dt) {
   G.t += dt;
   const m = G.mug, b = G.bag;
 
-  const oxTarget = G.drag || G.phase !== 'steep' ? G.oxT : clamp(G.oxT + TILT.off, -80, 80);
+  const oxTarget = G.drag || !playable() ? G.oxT : clamp(G.oxT + TILT.off, -80, 80);
   if (Math.abs(TILT.off) > 20) noteSlosh();
   const acc = 220 * (oxTarget - G.ox) - 22 * G.oxV;
   G.oxV += acc * dt; G.ox += G.oxV * dt; G.oxA = acc;
 
   if (G.phase === 'demo') {
     if (Math.random() < dt * 0.5) G.sv += rand(-0.5, 0.5);
+    // Quietly top the toy mug back up after a spill.
+    if (!G.spilling) G.L = Math.min(m.D * 0.78, G.L + dt * 12);
   } else if (G.wet && !G.done) {
     const dT = dt * TS;
     G.teaT += dT;
@@ -1865,7 +1890,7 @@ function brewCalls() {
 }
 // While brewing, the guides drawn in each touch zone do the explaining; each one
 // fades out once you've used its zone.
-function noteSlosh() { if (G.phase === 'steep') G.sloshed = true; }
+function noteSlosh() { if (playable()) G.sloshed = true; }
 function noteReach() { if (G.phase === 'steep') G.reached = true; }
 function showHint(text, secs) { $('hint').textContent = text; $('hint').hidden = false; G.hintUntil = secs ? G.t + secs : 0; }
 
@@ -1908,7 +1933,7 @@ function startGame(m) {
 // The way into a game: pick a mug, then a bag, and go. The in-game hints teach
 // the controls; How to play is one tap away on the title and bag screens.
 const SCREENS = ['scrTitle', 'scrMugs', 'scrBags', 'scrHow', 'scrResult', 'scrRecords', 'scrSettings'];
-function showScreen(id) { SCREENS.forEach(k => $(k).hidden = k !== id); refreshProgress(); }
+function showScreen(id) { SCREENS.forEach(k => $(k).hidden = k !== id); refreshProgress(); if (id === 'scrTitle') armNudge(); else $('btnStart').classList.remove('nudge'); }
 let chosenMug = MUGS[0], howFrom = 'scrTitle';
 function goMugs() {
   G = demoState(); GE = geo(); setPhaseUI();
@@ -1916,10 +1941,23 @@ function goMugs() {
   showScreen('scrMugs');
 }
 function goHome() {
-  G = demoState(); GE = geo(); setPhaseUI();
+  G = demoState(); GE = geo(); setPhaseUI(); TILT.g0 = null;
   refreshBests();
   showScreen('scrTitle');
 }
+// If nobody presses Put the kettle on for a while, or someone reaches for the
+// bag on the title screen, the button starts to pulse.
+let nudgeAt = 0, grabPopT = 0;
+function armNudge() {
+  let played = true;
+  try { played = localStorage.getItem('ijumh-mug') != null; } catch (e) {}
+  nudgeAt = performance.now() + (played ? 12000 : 6000); $('btnStart').classList.remove('nudge'); }
+function titleTouched(onBag) {
+  const now = performance.now();
+  nudgeAt = Math.min(nudgeAt, now + (onBag ? 0 : 4000));
+  if (onBag && now - grabPopT > 2500) { grabPopT = now; pop(pick(['Put the kettle on first!', 'Not yet! Start a brew.', 'Ooh, hot. Start a brew first.']), PAPER, 30, GE.cx, GE.rimY - 120); }
+}
+function checkNudge() { if (onTitle() && performance.now() > nudgeAt) $('btnStart').classList.add('nudge'); }
 function goBags(m) {
   chosenMug = m;
   $('bagSub').textContent = `For ${m.name}. Easiest first.`;
@@ -2217,6 +2255,12 @@ cv.addEventListener('pointerdown', e => {
   const m = G.mug, wx = e.clientX / S, wy = e.clientY / S;
   if (G.phase === 'drop') { dropBag(); return; }
   if (G.phase === 'pour') { const K = G.kettle; K.holding = true; K.pid = e.pointerId; K.aim = clamp(wx, 40, WW - 40); capture(e); return; }
+  if (onTitle()) {
+    capture(e); requestMotion();
+    titleTouched(Math.hypot(wx - (GE.cx + G.bag.x), wy - (GE.fy - G.bag.y)) < G.bag.sh.R + 50);
+    G.drag = { pid: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, ax: e.clientX, ay: e.clientY, t0: performance.now(), v: null, turn: 0 };
+    return;
+  }
   if (G.phase !== 'steep') return;
   capture(e);
   // Pressing anywhere above the rim picks up the hand, with the fingertip a little
@@ -2272,7 +2316,7 @@ function release(e) {
   const d = G.drag;
   if (d && d.pid === e.pointerId) {
     G.oxT = 0;
-    if (G.phase === 'steep' && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 10 && performance.now() - d.t0 < 300) { tapMug(); noteSlosh(); }
+    if (playable() && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < 10 && performance.now() - d.t0 < 300) { tapMug(); noteSlosh(); }
     G.drag = null;
   }
 }
@@ -2286,7 +2330,7 @@ addEventListener('keydown', e => {
   else if (e.key === 'ArrowRight') G.oxT = 60;
   else if (e.key === ' ' && document.activeElement === document.body) {
     if (G.phase === 'drop') { audioInit(); dropBag(); e.preventDefault(); }
-    else if (G.phase === 'steep') { tapMug(); e.preventDefault(); }
+    else if (playable()) { tapMug(); e.preventDefault(); }
   }
 });
 addEventListener('keyup', e => { if (G && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) G.oxT = 0; });
@@ -2483,6 +2527,7 @@ setTheme(themeId);
 refreshBests();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => document.querySelectorAll('.mugcard canvas').forEach((c, i) => drawPreview(c, MUGS[i])));
 G = demoState(); GE = geo();
+armNudge();
 
 let last = performance.now();
 function frame(now) {
@@ -2492,6 +2537,7 @@ function frame(now) {
   GE = geo();
   render();
   hud();
+  checkNudge();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

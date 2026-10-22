@@ -1221,7 +1221,7 @@ function update(dt) {
   G.tapHeat = Math.max(0, G.tapHeat - dt * 1.4);
   const brewing = G.phase === 'steep' && !G.done, gk = 1 - Math.exp(-dt * 6);
   G.guideUp += ((brewing && !G.reached ? 1 : 0) - G.guideUp) * gk;
-  G.guideLow += (((brewing || onTitle()) && !G.sloshed ? 1 : 0) - G.guideLow) * gk;
+  G.guideLow += ((brewing && !G.sloshed ? 1 : 0) - G.guideLow) * gk;
 
   if (G.phase === 'drop') updateDrop(dt);
   if (G.phase === 'pour') updatePour(dt);

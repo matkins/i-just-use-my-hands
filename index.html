@@ -394,6 +394,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <button class="btn" id="btnMugs">Try another mug or bag</button>
     </div>
     <div class="linkrow">
+      <button class="link" id="btnHome" type="button">Home</button>
       <button class="link" id="btnCopy">Copy result</button>
       <button class="link" id="btnRecordsR" type="button">Your records</button>
     </div>
@@ -1742,6 +1743,11 @@ function goMugs() {
   refreshBests();
   showScreen('scrMugs');
 }
+function goHome() {
+  G = demoState(); GE = geo(); setPhaseUI();
+  refreshBests();
+  showScreen('scrTitle');
+}
 function goBags(m) {
   chosenMug = m;
   $('bagSub').textContent = `For ${m.name}. Easiest first.`;
@@ -2149,6 +2155,7 @@ $('btnNext').addEventListener('click', () => {
 });
 $('btnAgain').addEventListener('click', () => startGame(G.mug));
 $('btnMugs').addEventListener('click', goMugs);
+$('btnHome').addEventListener('click', goHome);
 
 // Records: a grid of your best for every mug and bag shape. Back returns to
 // whichever screen opened it.

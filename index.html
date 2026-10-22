@@ -2249,10 +2249,13 @@ $('btnChange').addEventListener('click', () => {
 });
 $('btnReset').addEventListener('click', () => {
   if (!confirmTap($('btnReset'), 'Reset records', 'Tap again to delete them all')) return;
-  try { localStorage.removeItem('ijumh-best'); } catch (e) {}
+  // A full fresh start: forget the scores and the last mug and bag, so the next
+  // game is the first-time one. Sound, music, vibration and tilt stay as set.
+  try { ['ijumh-best', 'ijumh-mug', 'ijumh-bag'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
+  bagShape = 'square'; chosenMug = MUGS[0];
   refreshBests();
   showRecords(recFrom);
-  $('resetNote').textContent = 'All records cleared.'; $('resetNote').hidden = false;
+  $('resetNote').textContent = 'All records cleared. Your next game starts from scratch.'; $('resetNote').hidden = false;
 });
 $('btnSettings').addEventListener('click', () => { if (G.phase !== 'demo') openSettings('game'); });
 $('btnSettingsT').addEventListener('click', () => openSettings('scrTitle'));

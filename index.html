@@ -233,6 +233,18 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .stats { margin: 0; width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; text-align: left; font-size: 15px; border-top: 2px dashed rgba(42,22,13,.3); border-bottom: 2px dashed rgba(42,22,13,.3); padding-block: 12px; }
 .stats dt { font-weight: 800; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); align-self: center; }
 .stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.breakdown { margin: 0; width: 100%; max-width: 320px; display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; text-align: left; font-size: 14px; }
+.breakdown dt { color: var(--dim); font-weight: 600; }
+.breakdown dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.breakdown dd.minus { color: var(--tomato); }
+.tip { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(43,107,100,.12); font-size: 15px; line-height: 1.4; max-width: 42ch; }
+.tip b { font-family: var(--f-display); font-weight: 400; color: var(--tile); }
+.unlock { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 3px solid var(--ink); border-radius: 14px; background: #fff6dc; text-align: left; font-size: 15px; line-height: 1.35; }
+.unlock .btn { flex: 0 0 auto; padding: 9px 16px; font-size: 16px; }
+.locked { filter: grayscale(.85); opacity: .7; cursor: not-allowed; }
+.locked:active { transform: none; box-shadow: 0 4px 0 var(--ink); }
+.lockline { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.starcount { margin: 0; color: var(--mustard); font: 15px var(--f-display); letter-spacing: .02em; }
 .notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 15px; line-height: 1.4; max-width: 42ch; }
 .best { margin: 0; font-size: 13px; font-weight: 600; color: var(--tile); }
 .rec-sub { margin: 0; font-size: 14px; color: var(--dim); }
@@ -309,6 +321,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <button class="link" id="btnRecordsT" type="button">Your records</button>
       <button class="link" id="btnSettingsT" type="button">Settings</button>
     </div>
+    <p class="starcount" id="starCount" hidden></p>
   </div>
 </section>
 
@@ -357,7 +370,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
       <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea.</span></li>
       <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
-      <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch, but by then it’s stewed.</span></li>
+      <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch (if you’ve got all afternoon), but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
     <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
@@ -370,6 +383,9 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <h2 id="rTitle"></h2>
     <div class="stars" id="rStars" aria-label=""></div>
     <div class="score"><span id="rScore">0</span><small>/100</small></div>
+    <dl class="breakdown" id="rBreak"></dl>
+    <p class="tip" id="rTip"></p>
+    <div class="unlock" id="rNext" hidden><span id="rNextText"></span><button class="btn primary" id="btnNext" type="button">Try it</button></div>
     <dl class="stats" id="rStats"></dl>
     <ul class="notes" id="rNotes"></ul>
     <p class="best" id="rBest"></p>
@@ -1687,7 +1703,7 @@ function setPhaseUI() {
   $('hud').hidden = ph === 'demo';
   $('controls').hidden = ph === 'demo';
   $('btnDone').hidden = ph !== 'pour';
-  $('btnChange').hidden = ph !== 'drop' && ph !== 'pour';
+  $('btnChange').hidden = (ph !== 'drop' && ph !== 'pour') || G.first;
   disarm($('btnChange'), 'Try another mug or bag');
   $('btnMilk').hidden = ph !== 'steep' || G.milk;
   $('btnSpoon').hidden = ph !== 'steep';
@@ -1719,7 +1735,7 @@ function startGame(m) {
 // The way into a game: pick a mug, then a bag, and go. The in-game hints teach
 // the controls; How to play is one tap away on the title and bag screens.
 const SCREENS = ['scrTitle', 'scrMugs', 'scrBags', 'scrHow', 'scrResult', 'scrRecords', 'scrSettings'];
-function showScreen(id) { SCREENS.forEach(k => $(k).hidden = k !== id); }
+function showScreen(id) { SCREENS.forEach(k => $(k).hidden = k !== id); refreshProgress(); }
 let chosenMug = MUGS[0], howFrom = 'scrTitle';
 function goMugs() {
   G = demoState(); GE = geo(); setPhaseUI();
@@ -1758,7 +1774,7 @@ function buildBagCards() {
       <span class="mdiff d-${sh.diff.toLowerCase()}">${sh.diff}</span>
       <span class="mblurb">${BAG_BLURB[sh.id]}</span>
       <span class="mbest" data-bagbest="${sh.id}"></span>`;
-    btn.addEventListener('click', () => { audioInit(); pickBag(sh.id); });
+    btn.addEventListener('click', () => { if (btn.classList.contains('locked')) return; audioInit(); pickBag(sh.id); });
     grid.append(btn);
     const c = btn.querySelector('canvas').getContext('2d');
     c.scale(1.2, 1.2);
@@ -1786,6 +1802,36 @@ function readBests() {
   return o;
 }
 function writeBests(o) { try { localStorage.setItem('ijumh-best', JSON.stringify(o)); } catch (e) {} }
+
+// Progression: every mug and bag combination earns up to five stars from its
+// best score (30, 50, 70, 85 and 95 points). Stars unlock the harder mugs and bags. Anything
+// you've already played stays open, so existing records are never locked away.
+const starsOf = score => [30, 50, 70, 85, 95].filter(t => score >= t).length;
+const NEED = { mug: { classic: 0, teacup: 3, pint: 8, travel: 12 }, bag: { pyramid: 0, square: 4, round: 10 } };
+const MAX_STARS = MUGS.length * Object.keys(BAGS).length * 5;
+function totalStars(bests = readBests()) { return Object.values(bests).reduce((n, r) => n + starsOf(r.score), 0); }
+function isOpen(kind, id, bests = readBests()) {
+  if (totalStars(bests) >= NEED[kind][id]) return true;
+  return Object.keys(bests).some(k => k.split(':')[kind === 'mug' ? 0 : 1] === id);
+}
+function openSet(bests) {
+  return [...MUGS.map(m => 'mug:' + m.id), ...Object.keys(BAGS).map(b => 'bag:' + b)].filter(k => { const [kind, id] = k.split(':'); return isOpen(kind, id, bests); });
+}
+function refreshProgress() {
+  const bests = readBests(), n = totalStars(bests);
+  $('starCount').textContent = `★ ${n} / ${MAX_STARS} stars`; $('starCount').hidden = !Object.keys(bests).length;
+  document.querySelectorAll('.mugcard').forEach(btn => setLock(btn, 'mug', btn.id.slice(4), bests, n));
+  document.querySelectorAll('.bagcard').forEach(btn => setLock(btn, 'bag', btn.dataset.bag, bests, n));
+}
+function setLock(btn, kind, id, bests, n) {
+  const open = isOpen(kind, id, bests);
+  btn.classList.toggle('locked', !open); btn.setAttribute('aria-disabled', String(!open));
+  let line = btn.querySelector('.lockline');
+  if (!open) {
+    if (!line) { line = document.createElement('span'); line.className = 'lockline'; btn.append(line); }
+    line.textContent = `🔒 Earn ${NEED[kind][id]} ★ to unlock (you have ${n})`;
+  } else if (line) line.remove();
+}
 function refreshBests() {
   const bests = readBests();
   // Mug cards: your best on that mug with any bag.
@@ -1800,18 +1846,20 @@ function refreshBests() {
     el.textContent = r ? `Best on ${chosenMug.name}: ${r.score} · ${r.title}` : '';
   });
   document.querySelectorAll('.bagcard').forEach(b => b.setAttribute('aria-current', String(b.dataset.bag === bagShape)));
+  refreshProgress();
 }
 
 let lastShare = '';
 function showResults() {
   const m = G.mug, kind = G.result, grade = gradeOf(G.e), pain = Math.round(G.pain);
-  let total = brewPts(G.e) + fillPts(G.Lgrab / m.D) + 30 * (1 - Math.min(100, G.pain) / 100);
-  if (G.spills === 0 && G.misses === 0 && G.pain === 0) total += 10;
-  total -= G.spills * 4 + G.misses * 3 + (G.milk ? 4 : 0) + (G.Tgrab < 50 ? 10 : 0);
+  const part = { brew: brewPts(G.e), fill: fillPts(G.Lgrab / m.D), fingers: 30 * (1 - Math.min(100, G.pain) / 100) };
+  part.clean = G.spills === 0 && G.misses === 0 && G.pain === 0 ? 10 : 0;
+  const pen = { spills: G.spills * 4, misses: G.misses * 3, milk: G.milk ? 4 : 0, cold: G.Tgrab < 50 ? 10 : 0 };
+  let total = part.brew + part.fill + part.fingers + part.clean - pen.spills - pen.misses - pen.milk - pen.cold;
   if (kind === 'fail') total *= 0.2;
   if (kind === 'spoon') total = 0;
   total = Math.round(clamp(total, 0, 100));
-  const stars = clamp(Math.round(total / 20), 0, 5);
+  const stars = starsOf(total);
 
   let title;
   if (kind === 'spoon') title = 'Spoon Coward';
@@ -1842,8 +1890,6 @@ function showResults() {
     else if (G.pain < 70) notes.push('Your fingertip has opinions now.');
     else notes.push('You can no longer feel your index finger.');
   }
-  if (kind === 'out' && (grade.k === 'dish' || grade.k === 'weak')) notes.push('Too early. Next time, wait until the steep bar reaches the dashed zone.');
-  else if (kind === 'out' && grade.k === 'stewed') notes.push('Too late. Get it out while the steep bar is in the dashed zone.');
   if (G.milk) notes.push('Milk in with the bag still in. Some people would call the police.');
   if (G.Tgrab < 50 && kind === 'out') notes.push('You waited until it was lukewarm. Clever, but it’s cold now.');
   if (G.Lgrab / m.D < 0.4 && kind === 'out') notes.push('That’s barely a mouthful.');
@@ -1867,15 +1913,65 @@ function showResults() {
   $('rNotes').innerHTML = '';
   for (const n of notes) { const li = document.createElement('li'); li.textContent = n; $('rNotes').append(li); }
 
+  // Where the points came from, and the one thing that would help most.
+  const r1 = v => Math.round(v);
+  const brk = [['Brew strength', `${r1(part.brew)} / 45`], ['Mug filled', `${r1(part.fill)} / 15`], ['Fingers', `${r1(part.fingers)} / 30`]];
+  if (part.clean) brk.push(['Clean run bonus', '+10']);
+  for (const [k, label] of [['spills', 'Spills'], ['misses', 'Missed drops'], ['milk', 'Milk with the bag in'], ['cold', 'Waited till it was cold']]) if (pen[k]) brk.push([label, '−' + pen[k], true]);
+  if (kind === 'fail') brk.push(['Burnt out', '× 0.2', true]);
+  $('rBreak').innerHTML = '';
+  $('rBreak').hidden = kind === 'spoon';
+  for (const [k, v, minus] of brk) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; if (minus) dd.className = 'minus'; $('rBreak').append(dt, dd); }
+  $('rTip').innerHTML = '<b>Next time:</b> ' + nextTip(kind, grade, part, pen, total);
+
   const shape = G.bag.sh.name.toLowerCase(), key = bestKey(m.id, G.bag.sh.id);
-  const bests = readBests(), prev = bests[key];
+  const bests = readBests(), prev = bests[key], openBefore = openSet(bests);
   if (!prev || total > prev.score) { bests[key] = { score: total, title }; writeBests(bests); $('rBest').textContent = prev ? `New best for ${m.name} with a ${shape} bag!` : ''; }
   else $('rBest').textContent = `Best for ${m.name} with a ${shape} bag: ${prev.score} · ${prev.title}`;
+  suggestNext(bests, openBefore, total);
 
   lastShare = `I Just Use My Hands ☕ ${title} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} ${total}/100 · ${grade.name} brew, ${fmtTime(G.grabTea)} · fingers ${pain}% scorched · ${m.name}, ${G.bag.sh.name.toLowerCase()} bag`;
   $('copyBox').hidden = true; $('btnCopy').textContent = 'Copy result';
   $('hud').hidden = true; $('controls').hidden = true; $('hint').hidden = true;
   $('scrResult').hidden = false;
+}
+
+function nextTip(kind, grade, part, pen, total) {
+  if (kind === 'spoon') return 'Use your hands. The spoon scores nothing.';
+  if (kind === 'fail') return 'Keep your fingertip out of the tea. Pinch only a corner that’s sticking out.';
+  const lost = [
+    [45 - part.brew, grade.k === 'dish' || grade.k === 'weak' ? 'Wait until the steep bar reaches the dashed zone before you grab.' : 'Grab it sooner, while the steep bar is still in the dashed zone.'],
+    [15 - part.fill, 'Fill the mug up to the dotted line before tapping “That’ll do”.'],
+    [30 - part.fingers, 'Keep your fingertip out of the tea. Pinch only a corner that’s sticking out.'],
+    [pen.spills, 'Gentler sloshes. Tea over the rim costs points.'],
+    [pen.misses, 'Drop the bag when it’s right over the mug.'],
+    [pen.milk, 'Leave the milk until the bag’s out.'],
+    [pen.cold, 'Don’t wait for it to go cold. Grab it while it’s hot.'],
+  ].sort((a, b) => b[0] - a[0]);
+  if (total >= 90 || lost[0][0] < 3) return 'Hard to beat that. Try a tougher mug or bag.';
+  return lost[0][1];
+}
+// After a game, point at one thing to try next: anything just unlocked, or, after
+// a good score, the next harder combination you haven't played yet.
+let nextPick = null;
+function suggestNext(bests, openBefore, total) {
+  const newly = openSet(bests).filter(k => !openBefore.includes(k));
+  let text = '', pick = null;
+  const cur = { mug: G.mug.id, bag: G.bag.sh.id };
+  if (newly.length) {
+    const [kind, id] = newly[0].split(':');
+    pick = kind === 'mug' ? { mug: id, bag: 'pyramid' } : { mug: cur.mug, bag: id };
+    const names = newly.map(k => { const [kd, i] = k.split(':'); return kd === 'mug' ? MUGS.find(m => m.id === i).name : 'the ' + BAGS[i].name.toLowerCase() + ' bag'; });
+    text = `<b>Unlocked:</b> ${names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]}!`;
+  } else if (total >= 60) {
+    const bagIds = Object.keys(BAGS);
+    for (const b of bagIds.slice(bagIds.indexOf(cur.bag) + 1)) if (isOpen('bag', b, bests) && !bests[bestKey(cur.mug, b)]) { pick = { mug: cur.mug, bag: b }; break; }
+    if (!pick) for (const m of MUGS) if (isOpen('mug', m.id, bests) && !bests[bestKey(m.id, 'pyramid')]) { pick = { mug: m.id, bag: 'pyramid' }; break; }
+    if (pick) text = `<b>Try next:</b> ${MUGS.find(m => m.id === pick.mug).name}, ${BAGS[pick.bag].name.toLowerCase()} bag`;
+  }
+  nextPick = pick;
+  $('rNext').hidden = !pick;
+  if (pick) $('rNextText').innerHTML = text;
 }
 
 /* ---------------- mug cards ---------------- */
@@ -1911,7 +2007,7 @@ function buildMugCards() {
         <span class="st">Depth ${pips(m.stats.depth)}</span>
       </span>
       <span class="mbest" data-best="${m.id}"></span>`;
-    btn.addEventListener('click', () => { audioInit(); goBags(m); });
+    btn.addEventListener('click', () => { if (btn.classList.contains('locked')) return; audioInit(); goBags(m); });
     grid.append(btn);
     drawPreview(btn.querySelector('canvas'), m);
   }
@@ -2017,6 +2113,7 @@ $('btnStart').addEventListener('click', () => {
   try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
   chosenMug = MUGS[0];
   startGame(chosenMug);
+  G.first = true; setPhaseUI();
 });
 $('btnDone').addEventListener('click', () => { if (G.phase === 'pour' && G.L >= G.mug.D * 0.2) { G.kettle.holding = false; setPhase('steep'); } });
 $('btnMilk').addEventListener('click', addMilk);
@@ -2043,6 +2140,13 @@ $('btnSpoon').addEventListener('click', () => {
   }
   finish('spoon');
 });
+$('btnNext').addEventListener('click', () => {
+  if (!nextPick) return;
+  bagShape = nextPick.bag;
+  try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
+  chosenMug = MUGS.find(m => m.id === nextPick.mug);
+  startGame(chosenMug);
+});
 $('btnAgain').addEventListener('click', () => startGame(G.mug));
 $('btnMugs').addEventListener('click', goMugs);
 
@@ -2060,10 +2164,11 @@ function showRecords(from) {
     MUGS.map(m => `<tr><th scope="row" class="mug">${m.name}</th>${shapes.map(sh => {
       const r = bests[bestKey(m.id, sh.id)];
       const label = `Play ${m.name} with a ${sh.name.toLowerCase()} bag`, data = `data-mug="${m.id}" data-bag="${sh.id}"`;
+      if (!r && !(isOpen('mug', m.id, bests) && isOpen('bag', sh.id, bests))) return `<td class="none"><button type="button" class="rec-cell" disabled aria-label="${label}. Locked">🔒</button></td>`;
       return r ? `<td class="${r === top ? 'top' : ''}"><button type="button" class="rec-cell" ${data} aria-label="${label}. Best ${r.score}, ${esc(r.title)}"><span class="sc">${r.score}</span><span class="tt">${esc(r.title)}</span></button></td>`
         : `<td class="none"><button type="button" class="rec-cell" ${data} aria-label="${label}. No record yet">–</button></td>`;
     }).join('')}</tr>`).join('') + '</tbody>';
-  $('recSub').textContent = (n ? `${n} of ${MUGS.length * shapes.length} combinations brewed. Your top score is highlighted.` : 'No records yet.') + ' Tap any square to play that mug and bag.';
+  $('recSub').textContent = (n ? `★ ${totalStars(bests)} of ${MAX_STARS} stars, from ${n} of ${MUGS.length * shapes.length} combinations. Your top score is highlighted.` : 'No records yet.') + ' Tap any square to play it. Earn stars to unlock the rest.';
   $(from).hidden = true;
   $('scrRecords').hidden = false;
   $('btnRecBack').focus();
@@ -2164,6 +2269,7 @@ document.addEventListener('visibilitychange', () => {
 
 /* ---------------- boot ---------------- */
 buildMugCards();
+refreshBests();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => document.querySelectorAll('.mugcard canvas').forEach((c, i) => drawPreview(c, MUGS[i])));
 G = demoState(); GE = geo();
 

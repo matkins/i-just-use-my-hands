@@ -268,7 +268,13 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .rec-cell:focus-visible { outline: 3px solid var(--tile); outline-offset: 1px; }
 .rec td { background: var(--cream); border: 2px solid var(--ink); border-radius: 10px; padding: 0; text-align: center; vertical-align: middle; }
 .rec td.none { background: transparent; border-style: dashed; border-color: rgba(42,22,13,.3); color: rgba(42,22,13,.4); }
-.rec td.top { background: var(--mustard); }
+.rec td.s1 { background: #fdf0cf; }
+.rec td.s2 { background: #fae3a8; }
+.rec td.s3 { background: #f6d27a; }
+.rec td.s4 { background: #f0bf4c; }
+.rec td.s5 { background: var(--mustard); }
+.rec .st { display: block; font-size: 11px; letter-spacing: 1px; line-height: 1; margin-top: 4px; }
+.rec .st i { font-style: normal; opacity: .25; }
 .rec .sc { display: block; font: 22px var(--f-display); line-height: 1; font-variant-numeric: tabular-nums; }
 .rec .tt { display: block; font-size: 11px; line-height: 1.2; margin-top: 3px; padding: 0 2px; hyphens: auto; }
 .btnrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
@@ -290,7 +296,9 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   .titleblock .link { font-size: 14px; padding: 7px 11px; }
   .rec th { font-size: 9.5px; letter-spacing: .03em; }
   .rec th.mug { font-size: 13px; width: 27%; }
-  .rec .tt { font-size: 10px; }
+  .rec .tt { font-size: 9.5px; padding: 0; }
+  .rec-cell { padding-inline: 1px; }
+  .rec .st { font-size: 8.5px; letter-spacing: 0; }
   .rec-foot .btn, .result .btnrow .btn { font-size: 15px; padding: 10px 10px; }
   .linkrow .link { font-size: 14px; }
   .linkrow { gap: 12px; }
@@ -2320,18 +2328,18 @@ function showRecords(from) {
   $('resetNote').hidden = true; disarm($('btnReset'), 'Reset records');
   $('btnReset').hidden = !Object.keys(readBests()).length;
   const bests = readBests(), shapes = Object.values(BAGS);
-  let top = null, n = 0;
-  for (const m of MUGS) for (const sh of shapes) { const r = bests[bestKey(m.id, sh.id)]; if (r) { n++; if (!top || r.score > top.score) top = r; } }
+  const n = Object.keys(bests).length;
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   $('recTable').innerHTML = `<thead><tr><th></th>${shapes.map(sh => `<th scope="col">${sh.name}<span class="rec-diff">${sh.diff}</span></th>`).join('')}</tr></thead><tbody>` +
     MUGS.map(m => `<tr><th scope="row" class="mug">${m.name}</th>${shapes.map(sh => {
       const r = bests[bestKey(m.id, sh.id)];
       const label = `Play ${m.name} with a ${sh.name.toLowerCase()} bag`, data = `data-mug="${m.id}" data-bag="${sh.id}"`;
       if (!r && !(isOpen('mug', m.id, bests) && isOpen('bag', sh.id, bests))) return `<td class="none"><button type="button" class="rec-cell" disabled aria-label="${label}. Locked">🔒</button></td>`;
-      return r ? `<td class="${r === top ? 'top' : ''}"><button type="button" class="rec-cell" ${data} aria-label="${label}. Best ${r.score}, ${esc(r.title)}"><span class="sc">${r.score}</span><span class="tt">${esc(r.title)}</span></button></td>`
+      const k = r && starsOf(r.score);
+      return r ? `<td class="s${k}"><button type="button" class="rec-cell" ${data} aria-label="${label}. Best ${r.score}, ${k} of 5 stars, ${esc(r.title)}"><span class="sc">${r.score}</span><span class="st" aria-hidden="true">${'★'.repeat(k)}<i>${'★'.repeat(5 - k)}</i></span><span class="tt">${esc(r.title)}</span></button></td>`
         : `<td class="none"><button type="button" class="rec-cell" ${data} aria-label="${label}. No record yet">–</button></td>`;
     }).join('')}</tr>`).join('') + '</tbody>';
-  $('recSub').textContent = (n ? `★ ${totalStars(bests)} of ${MAX_STARS} stars, from ${n} of ${MUGS.length * shapes.length} combinations. Your top score is highlighted.` : 'No records yet.') + ' Tap any square to play it. Earn stars to unlock the rest.';
+  $('recSub').textContent = (n ? `★ ${totalStars(bests)} of ${MAX_STARS} stars, from ${n} of ${MUGS.length * shapes.length} combinations. The more stars, the more golden the square.` : 'No records yet.') + ' Tap any square to play it. Earn stars to unlock the rest.';
   $(from).hidden = true;
   $('scrRecords').hidden = false;
   $('btnRecBack').focus();

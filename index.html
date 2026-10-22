@@ -1989,6 +1989,12 @@ function isOpen(kind, id, bests = readBests()) {
   if (totalStars(bests) >= NEED[kind][id] && prereqMet(kind, id, bests)) return true;
   return Object.keys(bests).some(k => k.split(':')[kind === 'mug' ? 0 : 1] === id);
 }
+// What's still to earn: locked squares first, then locked themes, else nothing.
+function unlockNote(bests) {
+  const open = openSet(bests), themes = open.filter(k => k.startsWith('theme:')).length;
+  if (open.length - themes < MUGS.length + Object.keys(BAGS).length) return ' Earn stars to unlock the rest.';
+  return themes < Object.keys(THEMES).length ? ' Earn more stars to unlock new themes.' : '';
+}
 function openSet(bests) {
   return [...MUGS.map(m => 'mug:' + m.id), ...Object.keys(BAGS).map(b => 'bag:' + b), ...Object.keys(THEMES).map(t => 'theme:' + t)].filter(k => { const [kind, id] = k.split(':'); return isOpen(kind, id, bests); });
 }
@@ -2339,7 +2345,7 @@ function showRecords(from) {
       return r ? `<td class="s${k}"><button type="button" class="rec-cell" ${data} aria-label="${label}. Best ${r.score}, ${k} of 5 stars, ${esc(r.title)}"><span class="sc">${r.score}</span><span class="st" aria-hidden="true">${'★'.repeat(k)}<i>${'★'.repeat(5 - k)}</i></span><span class="tt">${esc(r.title)}</span></button></td>`
         : `<td class="none"><button type="button" class="rec-cell" ${data} aria-label="${label}. No record yet">–</button></td>`;
     }).join('')}</tr>`).join('') + '</tbody>';
-  $('recSub').textContent = (n ? `★ ${totalStars(bests)} of ${MAX_STARS} stars, from ${n} of ${MUGS.length * shapes.length} combinations. The more stars, the more golden the square.` : 'No records yet.') + ' Tap any square to play it. Earn stars to unlock the rest.';
+  $('recSub').textContent = (n ? `★ ${totalStars(bests)} of ${MAX_STARS} stars, from ${n} of ${MUGS.length * shapes.length} combinations. The more stars, the more golden the square.` : 'No records yet.') + ' Tap any square to play it.' + unlockNote(bests);
   $(from).hidden = true;
   $('scrRecords').hidden = false;
   $('btnRecBack').focus();

@@ -88,6 +88,15 @@ body {
 .settings li { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 2px dashed rgba(42,22,13,.2); }
 .settings b { display: block; font: 18px var(--f-display); font-weight: 400; }
 .settings small { display: block; font-size: 13px; line-height: 1.35; color: var(--dim); margin-top: 2px; }
+.settings .theme-row { border-bottom: 0; padding-bottom: 0; }
+.settings .theme-list { display: block; padding-top: 6px; }
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.themebtn { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 8px; text-align: left; padding: 7px 9px; border: 3px solid var(--ink); border-radius: 12px; background: var(--cream); font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+.themebtn[aria-checked="true"] { background: #fff6dc; outline: 3px solid var(--mustard); outline-offset: -7px; }
+.themebtn .sw { grid-row: span 2; width: 34px; height: 34px; border-radius: 8px; border: 2px solid var(--ink); }
+.themebtn b { font-size: 15px !important; line-height: 1.1; }
+.themebtn small { margin: 0 !important; font-size: 11.5px !important; }
+.themebtn.locked { filter: grayscale(.8); opacity: .65; cursor: not-allowed; }
 .toggle { flex: 0 0 auto; width: 58px; height: 32px; border-radius: 999px; border: 3px solid var(--ink); background: rgba(42,22,13,.15); position: relative; cursor: pointer; padding: 0; touch-action: manipulation; }
 .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--cream); border: 2px solid var(--ink); transition: left .15s; }
 .toggle[aria-checked="true"] { background: var(--tile); }
@@ -183,6 +192,8 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .step-sub { margin: 0; font-size: 14px; line-height: 1.4; color: var(--dim); }
 .linkrow { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
 .titleblock .linkrow { gap: 10px; }
+.titleblock .lede, .titleblock .starcount { background: rgba(42,22,13,.55); border-radius: 14px; padding: 6px 14px; }
+.titleblock .starcount { border-radius: 999px; padding: 4px 12px; }
 .titleblock .link { color: var(--cream); font-size: 15px; text-decoration: none; background: rgba(42,22,13,.78); border-radius: 999px; padding: 8px 16px; }
 .bags { display: grid; gap: 10px; }
 .bagcard {
@@ -433,6 +444,8 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><span><b>Music</b><small>A gentle tune in the background.</small></span><button class="toggle" id="setMusic" type="button" role="switch" aria-label="Music"></button></li>
       <li><span><b>Sound effects</b><small>Sizzles, pours, plops and yelps.</small></span><button class="toggle" id="setSound" type="button" role="switch" aria-label="Sound effects"></button></li>
       <li id="rowVib" hidden><span><b>Vibration</b><small>Buzzes on knocks, spills, pinches and burns. Needs your phone’s Touch vibration setting on.</small></span><button class="toggle" id="setVib" type="button" role="switch" aria-label="Vibration"></button></li>
+      <li class="theme-row"><span><b>Theme</b><small id="themeNote">The scene and its music. Earn stars to unlock more.</small></span></li>
+      <li class="theme-list"><div class="themes" id="themeGrid" role="radiogroup" aria-label="Theme"></div></li>
       <li><span><b>Tilt to slosh</b><small>Tilt your phone left and right to slide the mug while it brews.</small></span><button class="toggle" id="setTilt" type="button" role="switch" aria-label="Tilt to slosh"></button></li>
     </ul>
     <button class="btn" id="btnRecordsS" type="button">Your records</button>
@@ -502,6 +515,49 @@ const MUGS = [
     body: '#a3adb5', inner: '#5e676e', trim: '#2f363b', stats: { heat: 5, width: 1, depth: 5 }, diff: 'Silly' },
 ];
 
+// Themes change the scene and the music, and unlock with stars. Each sets the
+// wall pattern, worktop, kettle, sleeve and a music style.
+const THEMES = {
+  kitchen: {
+    name: 'Kitchen', blurb: 'Teal tiles and a mustard worktop.', need: 0,
+    wall: { type: 'tile', a: '#2b6b64', b: '#22574f' }, shade: ['rgba(10,30,28,.4)', 'rgba(10,20,18,.25)'],
+    top: '#f5c04a', worktop: MUSTARD, fleck: 'rgba(42,22,13,.13)',
+    kettle: { body: TOMATO, lid: '#f07a5e', handle: '#3d2a1f', band: INK }, sleeve: MUSTARD,
+    music: { style: 'bounce', bpm: 96, chords: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], scale: [65, 67, 69, 72, 74, 77, 79, 81, 84] },
+  },
+  cafe: {
+    name: 'Greasy Spoon', blurb: 'Chequered tiles, red Formica and a swing tune.', need: 10,
+    wall: { type: 'checker', a: '#e3d9c0', b: '#6e665c' }, shade: ['rgba(20,10,5,.45)', 'rgba(20,10,5,.25)'],
+    top: '#e2574a', worktop: '#c8352b', fleck: 'rgba(255,255,255,.18)',
+    kettle: { body: '#c9d1d6', lid: '#e8edf0', handle: INK, band: '#7d878e' }, sleeve: '#3b5fb0',
+    music: { style: 'swing', bpm: 132, chords: [[48, 52, 55, 57], [45, 48, 52, 55], [50, 53, 57, 60], [43, 47, 50, 53]], scale: [72, 74, 76, 79, 81, 84, 86, 88] },
+  },
+  shed: {
+    name: 'Allotment Shed', blurb: 'Bare planks, a workbench and a banjo.', need: 20,
+    wall: { type: 'planks', a: '#8a5a34', b: '#7a4f2d' }, shade: ['rgba(20,10,0,.4)', 'rgba(20,10,0,.25)'],
+    top: '#9a6b3e', worktop: '#6f4a2c', fleck: 'rgba(0,0,0,.18)',
+    kettle: { body: '#4f7a3a', lid: '#6d9a55', handle: INK, band: '#2f4a22' }, sleeve: '#f07c1b',
+    music: { style: 'folk', bpm: 112, chords: [[43, 47, 50], [48, 52, 55], [50, 54, 57], [43, 47, 50]], scale: [67, 69, 71, 74, 76, 79, 81, 83] },
+  },
+  parlour: {
+    name: 'Nan’s Parlour', blurb: 'Rosebud wallpaper, a doily and a waltz.', need: 30,
+    wall: { type: 'paper', a: '#e7bcbd', b: '#d79ea2' }, shade: ['rgba(60,20,30,.3)', 'rgba(60,20,30,.2)'],
+    top: '#7a4a2e', worktop: '#5c3923', fleck: 'rgba(0,0,0,.2)', lace: true,
+    kettle: { body: '#f4ecdc', lid: '#dfe7f5', handle: '#5b7fd6', band: '#5b7fd6' }, sleeve: '#9b86c4',
+    music: { style: 'waltz', bpm: 126, chords: [[46, 50, 53], [43, 46, 50], [51, 55, 58], [53, 57, 60]], scale: [70, 72, 74, 77, 79, 82, 84, 86] },
+  },
+  midnight: {
+    name: 'Midnight Brew', blurb: 'Can’t sleep. Moonlight, stars and lo-fi.', need: 45,
+    wall: { type: 'tile', a: '#1f2a4d', b: '#172038' }, shade: ['rgba(0,0,10,.35)', 'rgba(0,0,10,.35)'], stars: true,
+    top: '#555b78', worktop: '#3d4258', fleck: 'rgba(255,255,255,.1)',
+    kettle: { body: '#2e2e36', lid: '#4a4a56', handle: '#111', band: '#6b6b78' }, sleeve: '#5c7fd1',
+    music: { style: 'lofi', bpm: 72, chords: [[50, 53, 57, 60], [46, 50, 53, 57], [53, 57, 60, 64], [48, 52, 55, 62]], scale: [74, 77, 79, 81, 84, 86, 89] },
+  },
+};
+let themeId = 'kitchen';
+try { if (THEMES[localStorage.getItem('ijumh-theme')]) themeId = localStorage.getItem('ijumh-theme'); } catch (e) {}
+let TH = THEMES[themeId];
+
 let DPR = 1, CW = 0, CH = 0, S = 1, WW = 600, WH = 900;
 function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -546,11 +602,8 @@ function audioInit() {
 // three, a light arpeggio ripples on the off-beats, and a little melody steps up
 // and down the F major pentatonic. It has its own volume, separate from the
 // sound effects.
-const MUSIC = {
-  bpm: 96, vol: 0.075, timer: 0, next: 0, bar: 0, mel: 3,
-  chords: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]],
-  scale: [65, 67, 69, 72, 74, 77, 79, 81, 84],
-};
+// Each theme brings its own tempo, chords, scale and style (see THEMES).
+const MUSIC = { vol: 0.075, timer: 0, next: 0, bar: 0, mel: 3 };
 const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
 function startMusic() {
   const c = AU.ctx; if (!c || AU.musicBus) return;
@@ -589,26 +642,52 @@ function pluck(n, t, vol = 0.3, len = 0.9, type = 'triangle') {
 }
 function scheduleMusic() {
   const c = AU.ctx; if (!c || c.state !== 'running') return;
-  const beat = 60 / MUSIC.bpm, barLen = beat * 4;
+  const M = TH.music, beat = 60 / M.bpm, per = M.style === 'waltz' ? 3 : 4, barLen = beat * per;
   // Skip ahead rather than pile up notes after the tab was in the background.
   if (MUSIC.next < c.currentTime - 0.1) MUSIC.next = c.currentTime + 0.1;
   while (MUSIC.next < c.currentTime + 1.5) {
-    const t = MUSIC.next, ch = MUSIC.chords[MUSIC.bar % 4];
-    if (!AU.music) { MUSIC.next += barLen; MUSIC.bar++; continue; }
-    ch.forEach(n => padNote(n, t, barLen));
-    // Bass on one and three, bouncing up an octave on three.
+    const t = MUSIC.next, ch = M.chords[MUSIC.bar % M.chords.length];
+    if (AU.music) playBar(M, t, beat, ch);
+    MUSIC.next += barLen; MUSIC.bar++;
+  }
+}
+// Melody: mostly steps to a neighbouring note of the theme's scale.
+function melodyNote(M, t, len, vol = 0.26) {
+  MUSIC.mel = clamp(MUSIC.mel + pick([-1, -1, 1, 1, 1, 2, -2, 0]), 0, M.scale.length - 1);
+  pluck(M.scale[MUSIC.mel], t, vol, len);
+}
+function playBar(M, t, beat, ch) {
+  const n = ch.length;
+  if (M.style === 'bounce') {
+    ch.forEach(x => padNote(x, t, beat * 4));
     pluck(ch[0] - 12, t, 0.45, beat * 1.6, 'sine');
     pluck(ch[0], t + beat * 2, 0.32, beat * 1.4, 'sine');
-    // Arpeggio on the off-beats.
-    for (let k = 0; k < 4; k++) pluck(ch[k % 3] + 12, t + (k + 0.5) * beat, 0.09, beat * 0.8);
-    // Melody: mostly steps to a neighbouring note, landing on most beats and
-    // some half-beats, resting now and then.
-    for (let h = 0; h < 8; h++) {
-      if (Math.random() > (h % 2 ? 0.3 : 0.75)) continue;
-      MUSIC.mel = clamp(MUSIC.mel + pick([-1, -1, 1, 1, 1, 2, -2, 0]), 0, MUSIC.scale.length - 1);
-      pluck(MUSIC.scale[MUSIC.mel], t + h * beat / 2, 0.26, beat * 1.1);
-    }
-    MUSIC.next += barLen; MUSIC.bar++;
+    for (let k = 0; k < 4; k++) pluck(ch[k % n] + 12, t + (k + 0.5) * beat, 0.09, beat * 0.8);
+    for (let h = 0; h < 8; h++) if (Math.random() < (h % 2 ? 0.3 : 0.75)) melodyNote(M, t + h * beat / 2, beat * 1.1);
+  } else if (M.style === 'swing') {
+    // Walking bass on every beat, short chord stabs on two and four, swung melody.
+    const walk = [ch[0] - 12, ch[1] - 12, ch[2] - 12, ch[1] - 11];
+    walk.forEach((x, k) => pluck(x, t + k * beat, 0.4, beat * 0.9, 'sine'));
+    for (const k of [1, 3]) ch.forEach(x => pluck(x + 12, t + k * beat, 0.07, beat * 0.35));
+    for (let k = 0; k < 4; k++) for (const off of [0, 0.66]) if (Math.random() < (off ? 0.4 : 0.6)) melodyNote(M, t + (k + off) * beat, beat * 0.7, 0.22);
+  } else if (M.style === 'folk') {
+    // Bass on one and three, a banjo-ish roll on every eighth, melody on the beat.
+    pluck(ch[0] - 12, t, 0.45, beat * 1.5, 'sine');
+    pluck(ch[2] - 12, t + beat * 2, 0.38, beat * 1.5, 'sine');
+    for (let h = 0; h < 8; h++) pluck(ch[[0, 1, 2, 1][h % 4]] + 12 + (h % 4 === 2 ? 12 : 0), t + h * beat / 2, 0.08, beat * 0.5);
+    for (let k = 0; k < 4; k++) if (Math.random() < 0.7) melodyNote(M, t + k * beat, beat * 0.9, 0.24);
+  } else if (M.style === 'waltz') {
+    // Oom-pah-pah, with a long melody note or two each bar.
+    pluck(ch[0] - 12, t, 0.45, beat * 1.2, 'sine');
+    for (const k of [1, 2]) ch.forEach(x => pluck(x, t + k * beat, 0.08, beat * 0.6));
+    melodyNote(M, t, beat * 2.2, 0.24);
+    if (Math.random() < 0.6) melodyNote(M, t + beat * 2, beat * 1.2, 0.2);
+  } else {
+    // Lo-fi: a long soft pad, bass on one, a sparse lazy melody.
+    ch.forEach(x => padNote(x, t, beat * 4));
+    pluck(ch[0] - 12, t, 0.4, beat * 3, 'sine');
+    if (Math.random() < 0.5) pluck(ch[0] - 12, t + beat * 2.5, 0.25, beat, 'sine');
+    for (let k = 0; k < 4; k++) if (Math.random() < 0.35) melodyNote(M, t + k * beat + (Math.random() < 0.4 ? beat / 2 : 0), beat * 1.6, 0.18);
   }
 }
 function tone(f0, dur, type, vol, f1) {
@@ -1164,14 +1243,40 @@ function update(dt) {
 /* ---------------- drawing ---------------- */
 let tilePat = null;
 function makeTile() {
-  const t = document.createElement('canvas'); t.width = t.height = 80;
+  const w = TH.wall, t = document.createElement('canvas'); t.width = t.height = 80;
   const c = t.getContext('2d');
-  c.fillStyle = '#22574f'; c.fillRect(0, 0, 80, 80);
-  c.fillStyle = TILE; c.fillRect(3, 3, 74, 74);
-  const g = c.createLinearGradient(0, 0, 80, 80);
-  g.addColorStop(0, 'rgba(255,255,255,.12)'); g.addColorStop(1, 'rgba(0,0,0,.06)');
-  c.fillStyle = g; c.fillRect(3, 3, 74, 74);
+  if (w.type === 'checker') {
+    for (let i = 0; i < 4; i++) { c.fillStyle = (i % 2) === ((i >> 1) % 2) ? w.a : w.b; c.fillRect((i % 2) * 40, (i >> 1) * 40, 40, 40); }
+    c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 2; c.strokeRect(0, 0, 80, 80); c.beginPath(); c.moveTo(40, 0); c.lineTo(40, 80); c.moveTo(0, 40); c.lineTo(80, 40); c.stroke();
+  } else if (w.type === 'planks') {
+    for (let i = 0; i < 2; i++) { c.fillStyle = i ? w.b : w.a; c.fillRect(i * 40, 0, 40, 80); }
+    c.strokeStyle = 'rgba(40,20,5,.35)'; c.lineWidth = 1.5;
+    for (const x of [9, 18, 27, 52, 63, 71]) { c.beginPath(); c.moveTo(x, 0); c.bezierCurveTo(x + 3, 25, x - 3, 55, x + 1, 80); c.stroke(); }
+    c.fillStyle = 'rgba(30,15,5,.6)'; c.fillRect(38, 0, 3, 80); c.fillRect(78, 0, 2, 80);
+    c.beginPath(); c.ellipse(60, 30, 4, 6, 0, 0, Math.PI * 2); c.fill();
+  } else if (w.type === 'paper') {
+    c.fillStyle = w.a; c.fillRect(0, 0, 80, 80);
+    c.fillStyle = w.b; c.fillRect(0, 0, 6, 80); c.fillRect(40, 0, 6, 80);
+    const rose = (x, y) => {
+      c.fillStyle = '#c0606c'; for (let k = 0; k < 5; k++) { const an = k * Math.PI * 2 / 5; c.beginPath(); c.arc(x + Math.cos(an) * 4, y + Math.sin(an) * 4, 3.5, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = '#f2d36b'; c.beginPath(); c.arc(x, y, 2.5, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#7a9a5c'; c.beginPath(); c.ellipse(x + 8, y + 6, 5, 2.5, 0.6, 0, Math.PI * 2); c.fill();
+    };
+    rose(23, 20); rose(63, 60);
+  } else {
+    c.fillStyle = w.b; c.fillRect(0, 0, 80, 80);
+    c.fillStyle = w.a; c.fillRect(3, 3, 74, 74);
+    const g = c.createLinearGradient(0, 0, 80, 80);
+    g.addColorStop(0, 'rgba(255,255,255,.12)'); g.addColorStop(1, 'rgba(0,0,0,.06)');
+    c.fillStyle = g; c.fillRect(3, 3, 74, 74);
+  }
   tilePat = ctx.createPattern(t, 'repeat');
+}
+function setTheme(id) {
+  themeId = id; TH = THEMES[id]; tilePat = null;
+  try { localStorage.setItem('ijumh-theme', id); } catch (e) {}
+  document.body.style.background = TH.wall.a;
+  MUSIC.bar = 0; MUSIC.mel = 3;
 }
 
 function drawBackground() {
@@ -1179,12 +1284,28 @@ function drawBackground() {
   const cy = GE.counterY;
   ctx.fillStyle = tilePat; ctx.fillRect(0, 0, WW, cy);
   const g = ctx.createLinearGradient(0, 0, 0, cy);
-  g.addColorStop(0, 'rgba(10,30,28,.4)'); g.addColorStop(0.65, 'rgba(255,240,200,.05)'); g.addColorStop(1, 'rgba(10,20,18,.25)');
+  g.addColorStop(0, TH.shade[0]); g.addColorStop(0.65, 'rgba(255,240,200,.05)'); g.addColorStop(1, TH.shade[1]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, WW, cy);
-  ctx.fillStyle = '#f5c04a'; ctx.fillRect(0, cy, WW, 18);
-  ctx.fillStyle = MUSTARD; ctx.fillRect(0, cy + 18, WW, WH - cy);
+  if (TH.stars) {
+    for (let i = 0; i < 40; i++) {
+      const x = (i * 137.5) % WW, y = (i * 71.3) % (cy * 0.7), tw = 0.5 + 0.5 * Math.sin((G ? G.t : 0) * 1.5 + i);
+      ctx.fillStyle = `rgba(255,248,220,${0.35 + tw * 0.5})`; ctx.fillRect(x, y, 3, 3);
+    }
+    const mx = 120, my = 250;
+    ctx.fillStyle = 'rgba(255,244,210,.12)'; ctx.beginPath(); ctx.arc(mx, my, 70, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f6efd2'; ctx.beginPath(); ctx.arc(mx, my, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = TH.wall.a; ctx.beginPath(); ctx.arc(mx + 16, my - 10, 34, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = TH.top; ctx.fillRect(0, cy, WW, 18);
+  ctx.fillStyle = TH.worktop; ctx.fillRect(0, cy + 18, WW, WH - cy);
   ctx.fillStyle = INK; ctx.fillRect(0, cy - 3, WW, 4); ctx.fillRect(0, cy + 17, WW, 3);
-  ctx.fillStyle = 'rgba(42,22,13,.13)';
+  if (TH.lace) {
+    ctx.fillStyle = '#fbf6ea';
+    for (let x = 0; x < WW; x += 22) { ctx.beginPath(); ctx.arc(x + 11, cy + 20, 11, 0, Math.PI); ctx.fill(); }
+    ctx.fillStyle = 'rgba(42,22,13,.25)';
+    for (let x = 0; x < WW; x += 22) { ctx.beginPath(); ctx.arc(x + 11, cy + 24, 2.5, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.fillStyle = TH.fleck;
   const span = Math.max(40, WH - cy - 34);
   for (let i = 0; i < 90; i++) ctx.fillRect((i * 97.31) % WW, cy + 26 + ((i * 53.7) % span), 3, 2);
   ctx.fillStyle = 'rgba(42,22,13,.18)';
@@ -1505,7 +1626,7 @@ function drawHand(tx, ty, pinch, red) {
   ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + 1500, ay);
   ctx.strokeStyle = INK; ctx.lineWidth = 107; ctx.stroke();
-  ctx.strokeStyle = MUSTARD; ctx.lineWidth = 100; ctx.stroke();
+  ctx.strokeStyle = TH.sleeve; ctx.lineWidth = 100; ctx.stroke();
   ctx.strokeStyle = 'rgba(42,22,13,.3)'; ctx.lineWidth = 6;
   ctx.beginPath(); ctx.moveTo(ax + 14, ay - 50); ctx.lineTo(ax + 14, ay + 50); ctx.stroke();
   ctx.restore();
@@ -1538,14 +1659,14 @@ function drawKettle() {
   ctx.save(); ctx.translate(bx, by); ctx.rotate(th); ctx.scale(KETTLE_SCALE, KETTLE_SCALE);
   ctx.lineJoin = 'round';
   ctx.beginPath(); ctx.moveTo(-40, -62); ctx.bezierCurveTo(-40, -140, 40, -140, 40, -62);
-  ctx.strokeStyle = INK; ctx.lineWidth = 18; ctx.stroke(); ctx.strokeStyle = '#3d2a1f'; ctx.lineWidth = 10; ctx.stroke();
+  ctx.strokeStyle = INK; ctx.lineWidth = 18; ctx.stroke(); ctx.strokeStyle = TH.kettle.handle; ctx.lineWidth = 10; ctx.stroke();
   ctx.beginPath(); ctx.moveTo(-60, -8); ctx.lineTo(-128, -33); ctx.lineTo(-135, -17); ctx.lineTo(-60, 30); ctx.closePath();
-  ctx.fillStyle = TOMATO; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke();
+  ctx.fillStyle = TH.kettle.body; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke();
   ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-75, -60, 150, 120, 32) : ctx.rect(-75, -60, 150, 120);
-  ctx.fillStyle = TOMATO; ctx.fill(); ctx.stroke();
+  ctx.fillStyle = TH.kettle.body; ctx.fill(); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(-36, -24, 14, 26, 0.3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = INK; ctx.fillRect(-74, 36, 148, 8);
-  ctx.beginPath(); ctx.ellipse(0, -60, 48, 11, 0, 0, Math.PI * 2); ctx.fillStyle = '#f07a5e'; ctx.fill(); ctx.lineWidth = 4; ctx.stroke();
+  ctx.fillStyle = TH.kettle.band; ctx.fillRect(-74, 36, 148, 8);
+  ctx.beginPath(); ctx.ellipse(0, -60, 48, 11, 0, 0, Math.PI * 2); ctx.fillStyle = TH.kettle.lid; ctx.fill(); ctx.lineWidth = 4; ctx.stroke();
   ctx.beginPath(); ctx.arc(0, -74, 10, 0, Math.PI * 2); ctx.fillStyle = INK; ctx.fill();
   ctx.restore();
 }
@@ -1847,11 +1968,12 @@ const NEED = { mug: { classic: 0, teacup: 3, pint: 8, travel: 12 }, bag: { pyram
 const MAX_STARS = MUGS.length * Object.keys(BAGS).length * 5;
 function totalStars(bests = readBests()) { return Object.values(bests).reduce((n, r) => n + starsOf(r.score), 0); }
 function isOpen(kind, id, bests = readBests()) {
+  if (kind === 'theme') return totalStars(bests) >= THEMES[id].need;
   if (totalStars(bests) >= NEED[kind][id]) return true;
   return Object.keys(bests).some(k => k.split(':')[kind === 'mug' ? 0 : 1] === id);
 }
 function openSet(bests) {
-  return [...MUGS.map(m => 'mug:' + m.id), ...Object.keys(BAGS).map(b => 'bag:' + b)].filter(k => { const [kind, id] = k.split(':'); return isOpen(kind, id, bests); });
+  return [...MUGS.map(m => 'mug:' + m.id), ...Object.keys(BAGS).map(b => 'bag:' + b), ...Object.keys(THEMES).map(t => 'theme:' + t)].filter(k => { const [kind, id] = k.split(':'); return isOpen(kind, id, bests); });
 }
 function refreshProgress() {
   const bests = readBests(), n = totalStars(bests);
@@ -1986,8 +2108,8 @@ function suggestNext(bests, openBefore, total) {
   const cur = { mug: G.mug.id, bag: G.bag.sh.id };
   if (newly.length) {
     const [kind, id] = newly[0].split(':');
-    pick = kind === 'mug' ? { mug: id, bag: 'pyramid' } : { mug: cur.mug, bag: id };
-    const names = newly.map(k => { const [kd, i] = k.split(':'); return kd === 'mug' ? MUGS.find(m => m.id === i).name : 'the ' + BAGS[i].name.toLowerCase() + ' bag'; });
+    pick = kind === 'mug' ? { mug: id, bag: 'pyramid' } : kind === 'bag' ? { mug: cur.mug, bag: id } : { mug: cur.mug, bag: cur.bag, theme: id };
+    const names = newly.map(k => { const [kd, i] = k.split(':'); return kd === 'mug' ? MUGS.find(m => m.id === i).name : kd === 'bag' ? 'the ' + BAGS[i].name.toLowerCase() + ' bag' : 'the ' + THEMES[i].name + ' theme'; });
     text = `<b>Unlocked:</b> ${names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]}!`;
   } else if (total >= 60) {
     const bagIds = Object.keys(BAGS);
@@ -2168,6 +2290,7 @@ $('btnSpoon').addEventListener('click', () => {
 });
 $('btnNext').addEventListener('click', () => {
   if (!nextPick) return;
+  if (nextPick.theme) setTheme(nextPick.theme);
   bagShape = nextPick.bag;
   try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
   chosenMug = MUGS.find(m => m.id === nextPick.mug);
@@ -2237,11 +2360,24 @@ function syncSettings() {
 }
 function openSettings(from) {
   settingsFrom = from;
-  syncSettings();
+  syncSettings(); buildThemes();
   $('btnSetBack').textContent = from === 'game' ? 'Back to the tea' : 'Back';
   if (from === 'game') { pauseGame(); $('scrSettings').hidden = false; } else showScreen('scrSettings');
 }
 const savePref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (e) {} };
+// Theme picker: a swatch of wall, worktop and kettle for each theme.
+function buildThemes() {
+  const grid = $('themeGrid'), bests = readBests(), n = totalStars(bests);
+  grid.innerHTML = '';
+  for (const [id, th] of Object.entries(THEMES)) {
+    const open = isOpen('theme', id, bests), btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'themebtn' + (open ? '' : ' locked'); btn.setAttribute('role', 'radio');
+    btn.setAttribute('aria-checked', String(id === themeId)); btn.setAttribute('aria-disabled', String(!open));
+    btn.innerHTML = `<span class="sw" style="background: linear-gradient(135deg, ${th.wall.a} 0 45%, ${th.kettle.body} 45% 70%, ${th.worktop} 70%)"></span><b>${th.name}</b><small>${open ? th.blurb : `🔒 Earn ${th.need} ★ (you have ${n})`}</small>`;
+    btn.addEventListener('click', () => { if (!open) return; audioInit(); setTheme(id); buildThemes(); });
+    grid.append(btn);
+  }
+}
 // Only Android browsers can vibrate, so only they get the switch.
 $('rowVib').hidden = !('vibrate' in navigator && /Android/i.test(navigator.userAgent));
 $('setMusic').addEventListener('click', () => {
@@ -2280,7 +2416,7 @@ $('btnReset').addEventListener('click', () => {
   // A full fresh start: forget the scores and the last mug and bag, so the next
   // game is the first-time one. Sound, music, vibration and tilt stay as set.
   try { ['ijumh-best', 'ijumh-mug', 'ijumh-bag'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
-  bagShape = 'square'; chosenMug = MUGS[0];
+  bagShape = 'square'; chosenMug = MUGS[0]; setTheme('kitchen');
   refreshBests();
   showRecords(recFrom);
   $('resetNote').textContent = 'All records cleared. Your next game starts from scratch.'; $('resetNote').hidden = false;
@@ -2300,6 +2436,8 @@ document.addEventListener('visibilitychange', () => {
 
 /* ---------------- boot ---------------- */
 buildMugCards();
+if (!isOpen('theme', themeId)) themeId = 'kitchen';
+setTheme(themeId);
 refreshBests();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => document.querySelectorAll('.mugcard canvas').forEach((c, i) => drawPreview(c, MUGS[i])));
 G = demoState(); GE = geo();

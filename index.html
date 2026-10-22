@@ -48,7 +48,7 @@ body {
 
 /* HUD */
 .hud {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 5; max-width: 760px; margin: 0 auto;
   display: flex; gap: 8px; align-items: flex-start;
   padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -93,8 +93,9 @@ body {
 .toggle[aria-checked="true"] { background: var(--tile); }
 .toggle[aria-checked="true"]::after { left: 26px; }
 .toggle:focus-visible { outline: 3px solid var(--mustard); outline-offset: 2px; }
-.rec-foot { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-.rec-foot .btn.primary { flex: 1 1 auto; }
+.rec-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rec-foot .btn { padding-inline: 10px; white-space: nowrap; }
+.rec-foot .btn[hidden] + .btn { grid-column: 1 / -1; }
 .iconcol { display: flex; flex-direction: column; gap: 6px; flex: 0 0 36px; }
 .iconcol .iconbtn { flex: 0 0 36px; width: 36px; height: 36px; font-size: 16px; box-shadow: 0 3px 0 var(--ink); }
 .iconcol .iconbtn svg { width: 19px; height: 19px; }
@@ -167,7 +168,7 @@ body {
 .panel .kicker { color: var(--dim); }
 h1 {
   margin: 0; font-family: var(--f-display); font-weight: 400; line-height: .9;
-  font-size: clamp(54px, 16vw, 104px); color: var(--cream);
+  font-size: clamp(48px, min(16vw, 11vh), 104px); color: var(--cream);
   text-shadow: 3px 3px 0 var(--ink), -3px 3px 0 var(--ink), 3px -3px 0 var(--ink), -3px -3px 0 var(--ink), 0 9px 0 var(--ink);
   text-wrap: balance;
 }
@@ -258,15 +259,40 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .rec td.none { background: transparent; border-style: dashed; border-color: rgba(42,22,13,.3); color: rgba(42,22,13,.4); }
 .rec td.top { background: var(--mustard); }
 .rec .sc { display: block; font: 22px var(--f-display); line-height: 1; font-variant-numeric: tabular-nums; }
-.rec .tt { display: block; font-size: 11px; line-height: 1.2; margin-top: 3px; overflow-wrap: anywhere; }
+.rec .tt { display: block; font-size: 11px; line-height: 1.2; margin-top: 3px; padding: 0 2px; hyphens: auto; }
 .btnrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 #copyBox { width: 100%; font: 13px var(--f-body); border: 2px solid var(--ink); border-radius: 8px; padding: 8px; resize: none; }
 
 @media (max-width: 380px) {
   .chip { padding: 5px 7px 7px; }
-  .chip .val { font-size: 19px; }
+  .chip .lab { font-size: 9.5px; letter-spacing: .05em; }
+  .chip .val { font-size: 16px; }
+  .chip .sub { font-size: 11px; }
+  .chip.temp { min-width: 62px; }
   .mugs { gap: 8px; }
   .mblurb { font-size: 12px; }
+  .mugcard { grid-template-columns: 84px 1fr; gap: 3px 9px; }
+  .mugcard .mname { font-size: 16px; }
+  .mugcard .mstats { gap: 5px; }
+  .mugcard .st { font-size: 8.5px; letter-spacing: .03em; }
+  .titleblock .linkrow { gap: 6px; }
+  .titleblock .link { font-size: 14px; padding: 7px 11px; }
+  .rec th { font-size: 9.5px; letter-spacing: .03em; }
+  .rec th.mug { font-size: 13px; width: 27%; }
+  .rec .tt { font-size: 10px; }
+  .rec-foot .btn, .result .btnrow .btn { font-size: 15px; padding: 10px 10px; }
+  .linkrow .link { font-size: 14px; }
+  .linkrow { gap: 12px; }
+  .controls-list li { grid-template-columns: 64px 1fr; gap: 10px; font-size: 14px; }
+}
+@media (max-width: 340px) {
+  .titleblock .link { font-size: 13px; padding: 6px 9px; }
+  .titleblock .linkrow { gap: 5px; }
+}
+@media (max-height: 640px) {
+  .titleblock { gap: 8px; padding-top: 2vh; }
+  .lede { font-size: 15px; margin: 2px 0; }
+  .btn.big { font-size: 21px; padding: 12px 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .btn, .mugcard { transition: none; }
@@ -313,13 +339,13 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <p class="kicker">A game of thermal courage</p>
     <h1><span>I just use</span><span>my hands</span></h1>
     <p class="lede">Get the tea bag out of a freshly boiled cuppa. No spoon. Try not to cook your fingertips.</p>
+    <p class="starcount" id="starCount" hidden></p>
     <button class="btn primary big" id="btnStart">Put the kettle on</button>
     <div class="linkrow">
       <button class="link" id="btnHowT" type="button">How to play</button>
       <button class="link" id="btnRecordsT" type="button">Your records</button>
       <button class="link" id="btnSettingsT" type="button">Settings</button>
     </div>
-    <p class="starcount" id="starCount" hidden></p>
   </div>
 </section>
 
@@ -672,7 +698,11 @@ function demoState() {
 }
 
 function geo() {
-  const m = G.mug, counterY = WH - Math.max(150, WH * 0.2);
+  const m = G.mug;
+  let counterY = WH - Math.max(150, WH * 0.2);
+  // On the title screen, sit the mug low enough to clear the title and buttons.
+  const tb = G.phase === 'demo' && !$('scrTitle').hidden ? document.querySelector('#scrTitle .titleblock').getBoundingClientRect() : null;
+  if (tb && tb.height) counterY = clamp(tb.bottom / S + m.D + m.base + 30, counterY, WH - 40);
   const fy = counterY - m.base - (m.saucer ? 14 : 0);
   return { cx: WW / 2 + G.ox, fy, rimY: fy - m.D, counterY };
 }
@@ -1543,7 +1573,7 @@ function drawPuddles() {
 }
 function guideLabel(lines, x, y, a, maxW = 1e9) {
   ctx.font = `600 22px ${BODY}`;
-  const tw = Math.max(...lines.map(l => ctx.measureText(l).width)), fs = Math.max(14, Math.min(22, 22 * (maxW - 24) / tw));
+  const tw = Math.max(...lines.map(l => ctx.measureText(l).width)), fs = Math.max(14, 11.5 / S, Math.min(22, 22 * (maxW - 24) / tw));
   ctx.font = `600 ${fs}px ${BODY}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const lh = fs * 1.27, w = tw * fs / 22 + 24 + fs * 0.4, h = lines.length * lh + 14;
   ctx.globalAlpha = a;
@@ -1552,6 +1582,7 @@ function guideLabel(lines, x, y, a, maxW = 1e9) {
   ctx.fillStyle = CREAM;
   lines.forEach((l, i) => ctx.fillText(l, x, y + (i - (lines.length - 1) / 2) * lh));
   ctx.globalAlpha = 1;
+  return h;
 }
 function ghostTouch(x, y, a) {
   ctx.globalAlpha = a;
@@ -1582,9 +1613,11 @@ function drawGuides() {
     const m = G.mug, side = GE.cx - m.W / 2 - m.wall - 10, sx = side / 2;
     const ly = GE.rimY + (GE.counterY - GE.rimY) * 0.3;
     const tilt = TILT.on && TILT.seen;
-    guideLabel(tilt ? ['Swipe or tilt', 'to slosh', 'Circle to swirl', 'Tap to knock'] : ['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
+    const narrow = side * S < 130;
+    const lh = guideLabel(narrow ? (tilt ? ['Swipe or', 'tilt to slosh', 'Circle to', 'swirl', 'Tap to', 'knock'] : ['Swipe to', 'slosh', 'Circle to', 'swirl', 'Tap to', 'knock'])
+      : tilt ? ['Swipe or tilt', 'to slosh', 'Circle to swirl', 'Tap to knock'] : ['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
     // The ghost touch swipes side to side, then draws circles.
-    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + (tilt ? 140 : 120);
+    const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + lh / 2 + 34 / Math.max(S, 0.5);
     const gx = k < 2 ? sx + Math.sin(k * Math.PI * 2) * Math.min(50, side / 2 - 22) : sx + Math.cos((k - 2) * Math.PI * 2) * r;
     ghostTouch(gx, k < 2 ? gy : gy + Math.sin((k - 2) * Math.PI * 2) * r, low);
   }
@@ -2150,6 +2183,7 @@ let recFrom = 'scrMugs';
 function showRecords(from) {
   recFrom = from;
   $('resetNote').hidden = true; disarm($('btnReset'), 'Reset records');
+  $('btnReset').hidden = !Object.keys(readBests()).length;
   const bests = readBests(), shapes = Object.values(BAGS);
   let top = null, n = 0;
   for (const m of MUGS) for (const sh of shapes) { const r = bests[bestKey(m.id, sh.id)]; if (r) { n++; if (!top || r.score > top.score) top = r; } }
@@ -2242,7 +2276,7 @@ $('btnChange').addEventListener('click', () => {
   goMugs();
 });
 $('btnReset').addEventListener('click', () => {
-  if (!confirmTap($('btnReset'), 'Reset records', 'Tap again to delete them all')) return;
+  if (!confirmTap($('btnReset'), 'Reset records', 'Really reset?')) return;
   // A full fresh start: forget the scores and the last mug and bag, so the next
   // game is the first-time one. Sound, music, vibration and tilt stay as set.
   try { ['ijumh-best', 'ijumh-mug', 'ijumh-bag'].forEach(k => localStorage.removeItem(k)); } catch (e) {}

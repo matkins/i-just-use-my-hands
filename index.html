@@ -251,6 +251,11 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .tip { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(43,107,100,.12); font-size: 15px; line-height: 1.4; max-width: 42ch; }
 .tip b { font-family: var(--f-display); font-weight: 400; color: var(--tile); }
 .unlock { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 3px solid var(--ink); border-radius: 14px; background: #fff6dc; text-align: left; font-size: 15px; line-height: 1.35; }
+/* The enamel plaque for a perfect set. */
+.sign { position: relative; width: 100%; padding: 14px 16px 12px; border: 3px solid var(--ink); border-radius: 12px; background: var(--ink); color: var(--cream); text-align: center; box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 5px var(--mustard); transform: rotate(-1.2deg); }
+.sign b { display: block; font: 24px var(--f-display); color: var(--mustard); line-height: 1.1; }
+.sign b::before, .sign b::after { content: '★'; font-size: 14px; vertical-align: middle; margin: 0 8px; }
+.sign span { display: block; margin-top: 4px; font-size: 14px; line-height: 1.35; }
 .unlock .btn { flex: 0 0 auto; padding: 9px 16px; font-size: 16px; }
 .locked { filter: grayscale(.85); opacity: .7; cursor: not-allowed; }
 .locked:active { transform: none; box-shadow: 0 4px 0 var(--ink); }
@@ -299,6 +304,10 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   .rec .tt { font-size: 9.5px; padding: 0; }
   .rec-cell { padding-inline: 1px; }
   .rec .st { font-size: 8.5px; letter-spacing: 0; }
+  .sign { padding-inline: 10px; }
+  .sign b { font-size: 18px; white-space: nowrap; }
+  .sign b::before, .sign b::after { font-size: 11px; margin: 0 4px; }
+  .sign span { font-size: 13px; }
   .rec-foot .btn, .result .btnrow .btn { font-size: 15px; padding: 10px 10px; }
   .linkrow .link { font-size: 14px; }
   .linkrow { gap: 12px; }
@@ -429,6 +438,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <div class="score"><span id="rScore">0</span><small>/100</small></div>
     <dl class="breakdown" id="rBreak"></dl>
     <p class="tip" id="rTip"></p>
+    <div class="sign" id="rDone" hidden><b>Master of the Mug</b><span>100 on every mug and every bag. Nothing left to prove. Go and put the kettle on.</span></div>
     <div class="unlock" id="rNext" hidden><span id="rNextText"></span><button class="btn primary" id="btnNext" type="button">Try it</button></div>
     <p class="best" id="rBest"></p>
     <div class="btnrow">
@@ -466,6 +476,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
     <p class="kicker">Personal bests</p>
     <h2>Your records</h2>
     <p class="rec-sub" id="recSub"></p>
+    <div class="sign" id="recDone" hidden><b>Master of the Mug</b><span>100 on every mug and every bag. Nothing left to prove. Go and put the kettle on.</span></div>
     <div class="rec-wrap"><table class="rec" id="recTable"></table></div>
     <p class="step-sub" id="resetNote" hidden></p>
     <div class="rec-foot">
@@ -1995,6 +2006,7 @@ function unlockNote(bests) {
   if (open.length - themes < MUGS.length + Object.keys(BAGS).length) return ' Earn stars to unlock the rest.';
   return themes < Object.keys(THEMES).length ? ' Earn more stars to unlock new themes.' : '';
 }
+const allPerfect = bests => MUGS.every(m => Object.keys(BAGS).every(b => (bests[bestKey(m.id, b)] || {}).score === 100));
 function openSet(bests) {
   return [...MUGS.map(m => 'mug:' + m.id), ...Object.keys(BAGS).map(b => 'bag:' + b), ...Object.keys(THEMES).map(t => 'theme:' + t)].filter(k => { const [kind, id] = k.split(':'); return isOpen(kind, id, bests); });
 }
@@ -2099,10 +2111,13 @@ function showResults() {
   $('rTip').innerHTML = '<b>Next time:</b> ' + nextTip(kind, grade, part, pen, total);
 
   const shape = G.bag.sh.name.toLowerCase(), key = bestKey(m.id, G.bag.sh.id);
-  const bests = readBests(), prev = bests[key], openBefore = openSet(bests);
+  const bests = readBests(), prev = bests[key], openBefore = openSet(bests), perfectBefore = allPerfect(bests);
   if (!prev || total > prev.score) { bests[key] = { score: total, title }; writeBests(bests); $('rBest').textContent = prev ? `New best for ${m.name} with a ${shape} bag!` : ''; }
   else $('rBest').textContent = `Best for ${m.name} with a ${shape} bag: ${prev.score} · ${prev.title}`;
   suggestNext(bests, openBefore, total);
+  // The game that completes a full set of 100s gets the plaque instead of a suggestion.
+  $('rDone').hidden = perfectBefore || !allPerfect(bests);
+  if (!$('rDone').hidden) { $('rNext').hidden = true; $('rTip').hidden = true; } else $('rTip').hidden = false;
 
   lastShare = `I Just Use My Hands ☕ ${title} ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} ${total}/100 · ${grade.name} brew, ${fmtTime(G.grabTea)} · fingers ${pain}% scorched · ${m.name}, ${G.bag.sh.name.toLowerCase()} bag`;
   $('copyBox').hidden = true; $('btnCopy').textContent = 'Copy result';
@@ -2345,6 +2360,7 @@ function showRecords(from) {
       return r ? `<td class="s${k}"><button type="button" class="rec-cell" ${data} aria-label="${label}. Best ${r.score}, ${k} of 5 stars, ${esc(r.title)}"><span class="sc">${r.score}</span><span class="st" aria-hidden="true">${'★'.repeat(k)}<i>${'★'.repeat(5 - k)}</i></span><span class="tt">${esc(r.title)}</span></button></td>`
         : `<td class="none"><button type="button" class="rec-cell" ${data} aria-label="${label}. No record yet">–</button></td>`;
     }).join('')}</tr>`).join('') + '</tbody>';
+  $('recDone').hidden = !allPerfect(bests);
   $('recSub').textContent = (n ? `★ ${totalStars(bests)} of ${MAX_STARS} stars, from ${n} of ${MUGS.length * shapes.length} combinations. The more stars, the more golden the square.` : 'No records yet.') + ' Tap any square to play it.' + unlockNote(bests);
   $(from).hidden = true;
   $('scrRecords').hidden = false;

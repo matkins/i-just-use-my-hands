@@ -72,6 +72,9 @@ body {
 .chip .sub { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar { height: 10px; border: 2px solid var(--ink); border-radius: 6px; background: var(--cream); position: relative; overflow: hidden; }
 .bar b { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--mustard); }
+@keyframes chipPulse { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.08); background: #fff6c8; } }
+.chip.pulse { animation: chipPulse .9s ease-out 2; }
+@media (prefers-reduced-motion: reduce) { .chip.pulse { animation: none; } }
 .bar .zone { position: absolute; top: 0; bottom: 0; left: 46.7%; width: 26.7%; background: rgba(43, 107, 100, .28); border-left: 2px dashed var(--tile); border-right: 2px dashed var(--tile); }
 .bar.pain b { background: var(--tomato); }
 .iconbtn {
@@ -265,7 +268,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 <canvas id="c" aria-label="A mug of tea in a kitchen"></canvas>
 
 <div class="hud" id="hud" hidden>
-  <div class="chip brew">
+  <div class="chip brew" id="chipBrew">
     <div class="row"><span class="lab">Steep</span><span class="val" id="vTime">0:00</span></div>
     <div class="bar"><i class="zone"></i><b id="bBrew"></b></div>
     <span class="sub" id="vGrade">Dry bag</span>
@@ -591,6 +594,7 @@ const sfx = {
   ow() { tone(720, 0.3, 'sawtooth', 0.07, 240); },
   splash() { noise(0.4, 'bandpass', 900, 0.45); },
   pinch() { tone(990, 0.08, 'triangle', 0.2, 1320); },
+  ding() { tone(1046, 0.5, 'sine', 0.16); setTimeout(() => tone(1568, 0.7, 'sine', 0.13), 120); },
   win() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.25, 'triangle', 0.18), i * 90)); },
   fail() { [392, 330, 262].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'square', 0.06), i * 170)); },
   pour(p) {
@@ -1109,6 +1113,7 @@ function update(dt) {
   G.flash = Math.max(0, G.flash - dt * 2.5);
 
   if (G.hintUntil && G.t > G.hintUntil) { G.hintUntil = 0; $('hint').hidden = true; }
+  brewCalls();
   if (G.endAt && !G.shown && G.t >= G.endAt) { G.shown = true; showResults(); }
 }
 
@@ -1546,7 +1551,8 @@ function ghostTouch(x, y, a) {
 function drawGuides() {
   const up = G.guideUp, low = G.guideLow;
   if (up > 0.01) {
-    const top = G.hudBottom + 12, bot = GE.rimY - 14, h = bot - top;
+    const hr = $('hint').hidden ? null : $('hint').getBoundingClientRect();
+    const top = Math.max(G.hudBottom, hr ? hr.bottom / S : 0) + 12, bot = GE.rimY - 14, h = bot - top;
     if (h > 60) {
       ctx.globalAlpha = up;
       ctx.beginPath(); ctx.roundRect(18, top, WW - 36, h, 18);
@@ -1649,7 +1655,25 @@ function hud() {
 const HINTS = {
   drop: 'Tap to drop the tea bag in.',
   pour: 'Hold to pour, drag to aim. Pour beside the bag, not on it. Fill to the dotted line, then tap “That’ll do”.',
+  steep: 'Let it brew. Get the bag out when the steep bar reaches the dashed zone.',
 };
+// While brewing, call out each change in strength, so it's clear when to go in.
+const BREW_CALLS = {
+  perfect: ['Perfect brew. Get the bag out now!', 'Perfect! Get it out!', MUSTARD],
+  strong: ['Getting strong. Get it out quick!', 'Getting strong…', PAPER],
+  stewed: ['It’s stewing! Get it out!', 'It’s stewing!', TOMATO],
+};
+function brewCalls() {
+  if (G.phase !== 'steep' || G.done || !G.wet) return;
+  const k = gradeOf(G.e).k;
+  if (k === G.lastGrade) return;
+  G.lastGrade = k;
+  const c = BREW_CALLS[k]; if (!c) return;
+  showHint(c[0], 0);
+  pop(c[1], c[2], 40, GE.cx, GE.rimY - 60);
+  if (k === 'perfect') { sfx.ding(); vibrate([30, 50, 30]); }
+  const chip = $('chipBrew'); chip.classList.remove('pulse'); void chip.offsetWidth; chip.classList.add('pulse');
+}
 // While brewing, the guides drawn in each touch zone do the explaining; each one
 // fades out once you've used its zone.
 function noteSlosh() { if (G.phase === 'steep') G.sloshed = true; }
@@ -1818,6 +1842,8 @@ function showResults() {
     else if (G.pain < 70) notes.push('Your fingertip has opinions now.');
     else notes.push('You can no longer feel your index finger.');
   }
+  if (kind === 'out' && (grade.k === 'dish' || grade.k === 'weak')) notes.push('Too early. Next time, wait until the steep bar reaches the dashed zone.');
+  else if (kind === 'out' && grade.k === 'stewed') notes.push('Too late. Get it out while the steep bar is in the dashed zone.');
   if (G.milk) notes.push('Milk in with the bag still in. Some people would call the police.');
   if (G.Tgrab < 50 && kind === 'out') notes.push('You waited until it was lukewarm. Clever, but it’s cold now.');
   if (G.Lgrab / m.D < 0.4 && kind === 'out') notes.push('That’s barely a mouthful.');

@@ -75,7 +75,7 @@ body {
 @keyframes chipPulse { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.08); background: #fff6c8; } }
 .chip.pulse { animation: chipPulse .9s ease-out 2; }
 @media (prefers-reduced-motion: reduce) { .chip.pulse { animation: none; } }
-.bar .zone { position: absolute; top: 0; bottom: 0; left: 46.7%; width: 26.7%; background: rgba(43, 107, 100, .28); border-left: 2px dashed var(--tile); border-right: 2px dashed var(--tile); }
+.bar .zone { position: absolute; z-index: 1; top: 0; bottom: 0; left: 46.7%; width: 26.7%; background: rgba(76, 175, 80, .55); border-left: 2px solid #1f6b2c; border-right: 2px solid #1f6b2c; }
 .bar.pain b { background: var(--tomato); }
 .iconbtn {
   pointer-events: auto; flex: 0 0 44px; align-self: flex-start;
@@ -386,7 +386,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   <div class="panel">
     <p class="kicker">How to play</p>
     <h2>Get the bag out with your fingers</h2>
-    <p class="step-sub">Brew it to the dashed zone on the steep bar, then pinch a corner that’s out of the tea. Touch the tea itself and you’ll burn.</p>
+    <p class="step-sub">Brew it to the green zone on the steep bar, then pinch a corner that’s out of the tea. Touch the tea itself and you’ll burn.</p>
     <ul class="controls-list" id="howList"></ul>
     <button class="btn primary" id="btnHowGo" type="button">Back</button>
     <p class="step-sub" style="text-align:center">Sound on for the full sizzle.</p>
@@ -405,7 +405,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
       <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea.</span></li>
       <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
-      <li><b>Brew</b><span>The dashed zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch (if you’ve got all afternoon), but by then it’s stewed.</span></li>
+      <li><b>Brew</b><span>The green zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch (if you’ve got all afternoon), but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
     <p class="small credit">Hand: “hand pinch” by Oleksandr Panasovskyi from <a href="https://thenounproject.com/" target="_blank" rel="noopener">the Noun Project</a> (CC BY 3.0)</p>
@@ -1823,7 +1823,7 @@ function hud() {
 const HINTS = {
   drop: 'Tap to drop the tea bag in.',
   pour: 'Hold to pour, drag to aim. Pour beside the bag, not on it. Fill to the dotted line, then tap “That’ll do”.',
-  steep: 'Let it brew. Get the bag out when the steep bar reaches the dashed zone.',
+  steep: 'Let it brew. Get the bag out when the steep bar reaches the green zone.',
 };
 // While brewing, call out each change in strength, so it's clear when to go in.
 const BREW_CALLS = {
@@ -2098,7 +2098,7 @@ function nextTip(kind, grade, part, pen, total) {
   if (kind === 'spoon') return 'Use your hands. The spoon scores nothing.';
   if (kind === 'fail') return 'Keep your fingertip out of the tea. Pinch only a corner that’s sticking out.';
   const lost = [
-    [45 - part.brew, grade.k === 'dish' || grade.k === 'weak' ? 'Wait until the steep bar reaches the dashed zone before you grab.' : 'Grab it sooner, while the steep bar is still in the dashed zone.'],
+    [45 - part.brew, grade.k === 'dish' || grade.k === 'weak' ? 'Wait until the steep bar reaches the green zone before you grab.' : 'Grab it sooner, while the steep bar is still in the green zone.'],
     [15 - part.fill, 'Fill the mug up to the dotted line before tapping “That’ll do”.'],
     [30 - part.fingers, 'Keep your fingertip out of the tea. Pinch only a corner that’s sticking out.'],
     [pen.spills, 'Gentler sloshes. Tea over the rim costs points.'],

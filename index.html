@@ -520,35 +520,35 @@ const MUGS = [
 const THEMES = {
   kitchen: {
     name: 'Kitchen', blurb: 'Teal tiles and a mustard worktop.', need: 0,
-    wall: { type: 'tile', a: '#2b6b64', b: '#22574f' }, shade: ['rgba(10,30,28,.4)', 'rgba(10,20,18,.25)'],
+    wall: { type: 'tile', a: '#2b6b64', b: '#22574f' }, bar: '#28524e', shade: ['rgba(10,30,28,.4)', 'rgba(10,20,18,.25)'],
     top: '#f5c04a', worktop: MUSTARD, fleck: 'rgba(42,22,13,.13)',
     kettle: { body: TOMATO, lid: '#f07a5e', handle: '#3d2a1f', band: INK }, sleeve: MUSTARD,
     music: { style: 'bounce', bpm: 96, chords: [[53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53]], scale: [65, 67, 69, 72, 74, 77, 79, 81, 84] },
   },
   cafe: {
     name: 'Greasy Spoon', blurb: 'Chequered tiles, red Formica and a swing tune.', need: 10,
-    wall: { type: 'checker', a: '#e3d9c0', b: '#6e665c' }, shade: ['rgba(20,10,5,.45)', 'rgba(20,10,5,.25)'],
+    wall: { type: 'checker', a: '#e3d9c0', b: '#6e665c' }, bar: '#4a4540', shade: ['rgba(20,10,5,.45)', 'rgba(20,10,5,.25)'],
     top: '#e2574a', worktop: '#c8352b', fleck: 'rgba(255,255,255,.18)',
     kettle: { body: '#c9d1d6', lid: '#e8edf0', handle: INK, band: '#7d878e' }, sleeve: '#3b5fb0',
     music: { style: 'swing', bpm: 132, chords: [[48, 52, 55, 57], [45, 48, 52, 55], [50, 53, 57, 60], [43, 47, 50, 53]], scale: [72, 74, 76, 79, 81, 84, 86, 88] },
   },
   shed: {
     name: 'Allotment Shed', blurb: 'Bare planks, a workbench and a banjo.', need: 20,
-    wall: { type: 'planks', a: '#8a5a34', b: '#7a4f2d' }, shade: ['rgba(20,10,0,.4)', 'rgba(20,10,0,.25)'],
+    wall: { type: 'planks', a: '#8a5a34', b: '#7a4f2d' }, bar: '#5e3d22', shade: ['rgba(20,10,0,.4)', 'rgba(20,10,0,.25)'],
     top: '#9a6b3e', worktop: '#6f4a2c', fleck: 'rgba(0,0,0,.18)',
     kettle: { body: '#4f7a3a', lid: '#6d9a55', handle: INK, band: '#2f4a22' }, sleeve: '#f07c1b',
     music: { style: 'folk', bpm: 112, chords: [[43, 47, 50], [48, 52, 55], [50, 54, 57], [43, 47, 50]], scale: [67, 69, 71, 74, 76, 79, 81, 83] },
   },
   nans: {
     name: 'Nan’s House', blurb: 'Rosebud wallpaper, a doily and a waltz.', need: 30,
-    wall: { type: 'paper', a: '#e7bcbd', b: '#d79ea2' }, shade: ['rgba(60,20,30,.3)', 'rgba(60,20,30,.2)'],
+    wall: { type: 'paper', a: '#e7bcbd', b: '#d79ea2' }, bar: '#a8787b', shade: ['rgba(60,20,30,.3)', 'rgba(60,20,30,.2)'],
     top: '#7a4a2e', worktop: '#5c3923', fleck: 'rgba(0,0,0,.2)', lace: true,
     kettle: { body: '#f4ecdc', lid: '#dfe7f5', handle: '#5b7fd6', band: '#5b7fd6' }, sleeve: '#9b86c4',
     music: { style: 'waltz', bpm: 126, chords: [[46, 50, 53], [43, 46, 50], [51, 55, 58], [53, 57, 60]], scale: [70, 72, 74, 77, 79, 82, 84, 86] },
   },
   midnight: {
     name: 'Midnight Brew', blurb: 'Can’t sleep. Moonlight, stars and lo-fi.', need: 45,
-    wall: { type: 'tile', a: '#1f2a4d', b: '#172038' }, shade: ['rgba(0,0,10,.35)', 'rgba(0,0,10,.35)'], stars: true,
+    wall: { type: 'tile', a: '#1f2a4d', b: '#172038' }, bar: '#141b33', shade: ['rgba(0,0,10,.35)', 'rgba(0,0,10,.35)'], stars: true,
     top: '#555b78', worktop: '#3d4258', fleck: 'rgba(255,255,255,.1)',
     kettle: { body: '#2e2e36', lid: '#4a4a56', handle: '#111', band: '#6b6b78' }, sleeve: '#5c7fd1',
     music: { style: 'lofi', bpm: 72, chords: [[50, 53, 57, 60], [46, 50, 53, 57], [53, 57, 60, 64], [48, 52, 55, 62]], scale: [74, 77, 79, 81, 84, 86, 89] },
@@ -1276,6 +1276,8 @@ function setTheme(id) {
   themeId = id; TH = THEMES[id]; tilePat = null;
   try { localStorage.setItem('ijumh-theme', id); } catch (e) {}
   document.body.style.background = TH.wall.a;
+  // Tint the phone's status and navigation bars to match.
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', TH.bar);
   MUSIC.bar = 0; MUSIC.mel = 3;
 }
 

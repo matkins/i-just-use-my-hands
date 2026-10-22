@@ -760,7 +760,7 @@ const sfx = {
   pour(p) {
     if (!AU.pourG) return;
     const t = AU.ctx.currentTime;
-    AU.pourG.gain.setTargetAtTime(p * 0.22, t, 0.05);
+    AU.pourG.gain.setTargetAtTime(p * 0.15, t, 0.05);
     // Pitch climbs as the mug fills, like the real thing.
     AU.pourF.frequency.setTargetAtTime(450 + p * 500 + (G ? G.L / G.mug.D : 0) * 1100, t, 0.1);
   },

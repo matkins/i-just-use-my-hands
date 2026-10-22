@@ -539,8 +539,8 @@ const THEMES = {
     kettle: { body: '#4f7a3a', lid: '#6d9a55', handle: INK, band: '#2f4a22' }, sleeve: '#f07c1b',
     music: { style: 'folk', bpm: 112, chords: [[43, 47, 50], [48, 52, 55], [50, 54, 57], [43, 47, 50]], scale: [67, 69, 71, 74, 76, 79, 81, 83] },
   },
-  parlour: {
-    name: 'Nan’s Parlour', blurb: 'Rosebud wallpaper, a doily and a waltz.', need: 30,
+  nans: {
+    name: 'Nan’s House', blurb: 'Rosebud wallpaper, a doily and a waltz.', need: 30,
     wall: { type: 'paper', a: '#e7bcbd', b: '#d79ea2' }, shade: ['rgba(60,20,30,.3)', 'rgba(60,20,30,.2)'],
     top: '#7a4a2e', worktop: '#5c3923', fleck: 'rgba(0,0,0,.2)', lace: true,
     kettle: { body: '#f4ecdc', lid: '#dfe7f5', handle: '#5b7fd6', band: '#5b7fd6' }, sleeve: '#9b86c4',
@@ -1964,12 +1964,19 @@ function writeBests(o) { try { localStorage.setItem('ijumh-best', JSON.stringify
 // best score (30, 50, 70, 85 and 95 points). Stars unlock the harder mugs and bags. Anything
 // you've already played stays open, so existing records are never locked away.
 const starsOf = score => [30, 50, 70, 85, 95].filter(t => score >= t).length;
-const NEED = { mug: { classic: 0, teacup: 3, pint: 8, travel: 12 }, bag: { pyramid: 0, square: 4, round: 10 } };
+const NEED = { mug: { classic: 0, teacup: 4, pint: 15, travel: 30 }, bag: { pyramid: 0, square: 6, round: 22 } };
+// The harder unlocks also need at least 3 stars with the step below them.
+const PREREQ = { mug: { pint: ['mug', 'teacup'], travel: ['mug', 'pint'] }, bag: { round: ['bag', 'square'] } };
+const unlockName = (kind, id) => kind === 'mug' ? MUGS.find(m => m.id === id).name : 'the ' + BAGS[id].name.toLowerCase() + ' bag';
+function bestStarsWith(kind, id, bests) {
+  return Math.max(0, ...Object.entries(bests).filter(([k]) => k.split(':')[kind === 'mug' ? 0 : 1] === id).map(([, r]) => starsOf(r.score)));
+}
+function prereqMet(kind, id, bests) { const pr = PREREQ[kind] && PREREQ[kind][id]; return !pr || bestStarsWith(pr[0], pr[1], bests) >= 3; }
 const MAX_STARS = MUGS.length * Object.keys(BAGS).length * 5;
 function totalStars(bests = readBests()) { return Object.values(bests).reduce((n, r) => n + starsOf(r.score), 0); }
 function isOpen(kind, id, bests = readBests()) {
   if (kind === 'theme') return totalStars(bests) >= THEMES[id].need;
-  if (totalStars(bests) >= NEED[kind][id]) return true;
+  if (totalStars(bests) >= NEED[kind][id] && prereqMet(kind, id, bests)) return true;
   return Object.keys(bests).some(k => k.split(':')[kind === 'mug' ? 0 : 1] === id);
 }
 function openSet(bests) {
@@ -1987,7 +1994,10 @@ function setLock(btn, kind, id, bests, n) {
   let line = btn.querySelector('.lockline');
   if (!open) {
     if (!line) { line = document.createElement('span'); line.className = 'lockline'; btn.append(line); }
-    line.textContent = `🔒 Earn ${NEED[kind][id]} ★ to unlock (you have ${n})`;
+    const pr = PREREQ[kind] && PREREQ[kind][id], need = [];
+    if (n < NEED[kind][id]) need.push(`${NEED[kind][id]} ★ in total (you have ${n})`);
+    if (pr && !prereqMet(kind, id, bests)) need.push(`3 ★ with ${unlockName(pr[0], pr[1])}`);
+    line.textContent = `🔒 Unlock with ${need.join(' and ')}`;
   } else if (line) line.remove();
 }
 function refreshBests() {

@@ -230,11 +230,10 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .stars { font-size: 34px; letter-spacing: 4px; color: var(--mustard); -webkit-text-stroke: 2px var(--ink); line-height: 1; }
 .score { font-family: var(--f-display); font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; }
 .score small { font-size: 22px; color: var(--dim); }
-.stats { margin: 0; width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; text-align: left; font-size: 15px; border-top: 2px dashed rgba(42,22,13,.3); border-bottom: 2px dashed rgba(42,22,13,.3); padding-block: 12px; }
-.stats dt { font-weight: 800; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); align-self: center; }
-.stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .breakdown { margin: 0; width: 100%; max-width: 320px; display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; text-align: left; font-size: 14px; }
 .breakdown dt { color: var(--dim); font-weight: 600; }
+.breakdown dt small { font-weight: 500; font-size: 13px; opacity: .85; }
+.quip { margin: -6px 0 0; font-size: 15px; line-height: 1.35; color: var(--dim); max-width: 36ch; }
 .breakdown dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 .breakdown dd.minus { color: var(--tomato); }
 .tip { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(43,107,100,.12); font-size: 15px; line-height: 1.4; max-width: 42ch; }
@@ -245,7 +244,6 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 .locked:active { transform: none; box-shadow: 0 4px 0 var(--ink); }
 .lockline { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--ink); }
 .starcount { margin: 0; color: var(--mustard); font: 15px var(--f-display); letter-spacing: .02em; }
-.notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 15px; line-height: 1.4; max-width: 42ch; }
 .best { margin: 0; font-size: 13px; font-weight: 600; color: var(--tile); }
 .rec-sub { margin: 0; font-size: 14px; color: var(--dim); }
 .rec-wrap { overflow-x: auto; }
@@ -381,19 +379,19 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   <div class="panel result">
     <p class="kicker" id="rMug"></p>
     <h2 id="rTitle"></h2>
+    <p class="quip" id="rQuip"></p>
     <div class="stars" id="rStars" aria-label=""></div>
     <div class="score"><span id="rScore">0</span><small>/100</small></div>
     <dl class="breakdown" id="rBreak"></dl>
     <p class="tip" id="rTip"></p>
     <div class="unlock" id="rNext" hidden><span id="rNextText"></span><button class="btn primary" id="btnNext" type="button">Try it</button></div>
-    <dl class="stats" id="rStats"></dl>
-    <ul class="notes" id="rNotes"></ul>
     <p class="best" id="rBest"></p>
     <div class="btnrow">
       <button class="btn primary" id="btnAgain">Same again please</button>
       <button class="btn" id="btnMugs">Try another mug or bag</button>
     </div>
     <div class="linkrow">
+      <button class="link" id="btnHome" type="button">Home</button>
       <button class="link" id="btnCopy">Copy result</button>
       <button class="link" id="btnRecordsR" type="button">Your records</button>
     </div>
@@ -1742,6 +1740,11 @@ function goMugs() {
   refreshBests();
   showScreen('scrMugs');
 }
+function goHome() {
+  G = demoState(); GE = geo(); setPhaseUI();
+  refreshBests();
+  showScreen('scrTitle');
+}
 function goBags(m) {
   chosenMug = m;
   $('bagSub').textContent = `For ${m.name}. Easiest first.`;
@@ -1874,54 +1877,44 @@ function showResults() {
   else if (grade.k === 'strong') title = "Builder's Brew";
   else title = 'Gentle Dunker';
 
-  const notes = [];
-  if (kind === 'spoon') notes.push('The game is called I Just Use My Hands. You had one job.');
-  else {
-    notes.push({
+  // One line of commentary under the title.
+  const quip = kind === 'spoon' ? 'The game is called I Just Use My Hands. You had one job.'
+    : kind === 'fail' ? 'Run it under the cold tap for twenty minutes. The tea is fine, though.'
+    : {
       dish: 'Basically hot water with ambitions.',
       weak: 'A bit shy. Could have gone longer.',
       perfect: 'A textbook brew. Lovely colour.',
       strong: 'Builder’s strength. Respect.',
       stewed: 'Stewed. You could stand a spoon in it, if you owned one.',
-    }[grade.k]);
-    if (kind === 'fail') notes.push('Run it under the cold tap for twenty minutes. The tea is fine, though.');
-    else if (G.pain <= 0) notes.push('Not a single blister.');
-    else if (G.pain < 30) notes.push('A little tingle. Character building.');
-    else if (G.pain < 70) notes.push('Your fingertip has opinions now.');
-    else notes.push('You can no longer feel your index finger.');
-  }
-  if (G.milk) notes.push('Milk in with the bag still in. Some people would call the police.');
-  if (G.Tgrab < 50 && kind === 'out') notes.push('You waited until it was lukewarm. Clever, but it’s cold now.');
-  if (G.Lgrab / m.D < 0.4 && kind === 'out') notes.push('That’s barely a mouthful.');
-  if (G.misses) notes.push(`${G.misses} tea bag${G.misses > 1 ? 's' : ''} missed the mug. Five-second rule.`);
+    }[grade.k];
 
-  $('rMug').textContent = m.name;
+  $('rMug').textContent = `${m.name} · ${G.bag.sh.name} bag`;
+  $('rQuip').textContent = quip;
   $('rTitle').textContent = title;
   $('rStars').textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
   $('rStars').setAttribute('aria-label', `${stars} out of 5 stars`);
   $('rScore').textContent = total;
-  const rows = [
-    ['Brew', `${grade.name} · ${fmtTime(G.grabTea)} steep`],
-    ['Tea temp', `${Math.round(G.Tgrab)}°C when grabbed`],
-    ['Fingers', pain ? `${pain}% scorched · ${G.burns} dip${G.burns === 1 ? '' : 's'}` : 'Untouched'],
-    ['Spills', String(G.spills)],
-    ['Tea bag', G.bag.sh.name],
-    ['Milk', G.milk ? 'In with the bag' : 'None'],
-  ];
-  $('rStats').innerHTML = '';
-  for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; $('rStats').append(dt, dd); }
-  $('rNotes').innerHTML = '';
-  for (const n of notes) { const li = document.createElement('li'); li.textContent = n; $('rNotes').append(li); }
-
   // Where the points came from, and the one thing that would help most.
   const r1 = v => Math.round(v);
-  const brk = [['Brew strength', `${r1(part.brew)} / 45`], ['Mug filled', `${r1(part.fill)} / 15`], ['Fingers', `${r1(part.fingers)} / 30`]];
-  if (part.clean) brk.push(['Clean run bonus', '+10']);
-  for (const [k, label] of [['spills', 'Spills'], ['misses', 'Missed drops'], ['milk', 'Milk with the bag in'], ['cold', 'Waited till it was cold']]) if (pen[k]) brk.push([label, '−' + pen[k], true]);
-  if (kind === 'fail') brk.push(['Burnt out', '× 0.2', true]);
+  const brk = [
+    ['Brew', `${grade.name}, ${fmtTime(G.grabTea)}`, `${r1(part.brew)} / 45`],
+    ['Mug filled', `${r1(G.Lgrab / m.D * 100)}%`, `${r1(part.fill)} / 15`],
+    ['Fingers', pain ? `${pain}% scorched` : 'untouched', `${r1(part.fingers)} / 30`],
+  ];
+  if (part.clean) brk.push(['Clean run bonus', '', '+10']);
+  if (pen.spills) brk.push(['Spills', String(G.spills), '−' + pen.spills, true]);
+  if (pen.misses) brk.push(['Missed drops', String(G.misses), '−' + pen.misses, true]);
+  if (pen.milk) brk.push(['Milk with the bag in', '', '−' + pen.milk, true]);
+  if (pen.cold) brk.push(['Waited till it was cold', `${Math.round(G.Tgrab)}°C`, '−' + pen.cold, true]);
+  if (kind === 'fail') brk.push(['Burnt out', '', '× 0.2', true]);
   $('rBreak').innerHTML = '';
   $('rBreak').hidden = kind === 'spoon';
-  for (const [k, v, minus] of brk) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; if (minus) dd.className = 'minus'; $('rBreak').append(dt, dd); }
+  for (const [k, detail, v, minus] of brk) {
+    const dt = document.createElement('dt'), dd = document.createElement('dd');
+    dt.textContent = k;
+    if (detail) { const sm = document.createElement('small'); sm.textContent = ' · ' + detail; dt.append(sm); }
+    dd.textContent = v; if (minus) dd.className = 'minus'; $('rBreak').append(dt, dd);
+  }
   $('rTip').innerHTML = '<b>Next time:</b> ' + nextTip(kind, grade, part, pen, total);
 
   const shape = G.bag.sh.name.toLowerCase(), key = bestKey(m.id, G.bag.sh.id);
@@ -2149,6 +2142,7 @@ $('btnNext').addEventListener('click', () => {
 });
 $('btnAgain').addEventListener('click', () => startGame(G.mug));
 $('btnMugs').addEventListener('click', goMugs);
+$('btnHome').addEventListener('click', goHome);
 
 // Records: a grid of your best for every mug and bag shape. Back returns to
 // whichever screen opened it.

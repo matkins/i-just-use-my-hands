@@ -178,6 +178,9 @@ body {
 .titlefoot { margin: auto auto 0; padding-bottom: clamp(8px, 4vh, 40px); display: flex; flex-direction: column; align-items: center; gap: 12px; }
 /* It sits on the worktop, so it's dark to stand out whatever the theme. */
 #btnStart { background: var(--ink); color: var(--mustard); box-shadow: 0 5px 0 rgba(0,0,0,.45); }
+/* A returning player's one-tap way back in. */
+.btn.quick { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 22px 9px; font-size: 17px; }
+.btn.quick small { font: 800 11px var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
 /* Nudges a first-timer who hasn't spotted the way in. */
 .btn.nudge { animation: nudge 1.6s ease-in-out infinite; }
 @keyframes nudge {
@@ -331,6 +334,9 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
 }
 @media (max-height: 640px) {
   .titleblock { gap: 8px; padding-top: 2vh; }
+  .titleblock .starcount { display: none; }
+  .titlefoot { gap: 8px; padding-bottom: 6px; }
+  .btn.quick { padding: 6px 18px 7px; font-size: 15px; }
   .lede { font-size: 15px; margin: 2px 0; }
   .btn.big { font-size: 21px; padding: 12px 24px; }
 }
@@ -384,6 +390,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   </div>
   <div class="titlefoot">
     <button class="btn primary big" id="btnStart">Put the kettle on</button>
+    <button class="btn quick" id="btnQuick" type="button" hidden><small id="quickWhy"></small><span id="quickWhat"></span></button>
     <div class="linkrow">
       <button class="link" id="btnHowT" type="button">How to play</button>
       <button class="link" id="btnRecordsT" type="button">Your records</button>
@@ -418,7 +425,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   <div class="panel">
     <p class="kicker">How to play</p>
     <h2>Get the bag out with your fingers</h2>
-    <p class="step-sub">Brew it to the green zone on the steep bar, then pinch a corner that’s out of the tea. Touch the tea itself and you’ll burn.</p>
+    <p class="step-sub">Brew it to the green zone on the steep bar, then pinch an edge that’s out of the tea. Touch the tea itself and you’ll burn.</p>
     <ul class="controls-list" id="howList"></ul>
     <button class="btn primary" id="btnHowGo" type="button">Back</button>
     <p class="step-sub" style="text-align:center">Sound on for the full sizzle.</p>
@@ -433,10 +440,10 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Drop</b><span>Tap anywhere while the bag swings over the mug.</span></li>
       <li><b>Pour</b><span>Hold to pour and drag to aim. Pour beside the bag: a soggy bag sinks. Tap “That’ll do” when you reach the dotted line.</span></li>
       <li><b>Slosh</b><span>Swipe left and right anywhere level with the mug. The tea rocks and the bag rides up the side.</span></li>
-      <li><b>Swirl</b><span>Draw circles level with the mug to spin the bag. A tilted bag pokes a corner up.</span></li>
+      <li><b>Swirl</b><span>Draw circles level with the mug to spin the bag. A tilted bag pokes an edge up.</span></li>
       <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
       <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea.</span></li>
-      <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch a corner that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
+      <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch an edge that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
       <li><b>Brew</b><span>The green zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch (if you’ve got all afternoon), but by then it’s stewed.</span></li>
     </ul>
     <button class="btn primary" id="btnResume">Back to the tea</button>
@@ -894,9 +901,19 @@ function painWord(p) {
 function fmtTime(s) { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 
 /* ---------------- effects ---------------- */
-function pop(text, col, size, x, y) {
-  const n = G.pops.length;
-  G.pops.push({ text, col: col || PAPER, size: size || 34, x: x ?? GE.cx, y: (y ?? GE.rimY - 70) - n * 44, vy: -30, life: 1.5, max: 1.5 });
+// Pop-up words never land on top of each other: a repeat of one still showing
+// just refreshes it, and anything else is stacked above whatever's in the way.
+function pop(text, col, size = 34, x = GE.cx, y = GE.rimY - 70) {
+  const same = G.pops.find(p => p.text === text);
+  if (same) { same.life = same.max; return; }
+  ctx.font = `${size}px ${DISPLAY}`;
+  const w = ctx.measureText(text).width * 1.15, px = clamp(x, 120, WW - 120);
+  for (let i = 0; i < 12; i++) {
+    const hit = G.pops.find(p => Math.abs(p.y - y) < (p.size + size) * 0.6 && Math.abs(clamp(p.x, 120, WW - 120) - px) < (p.w + w) / 2);
+    if (!hit) break;
+    y = hit.y - (hit.size + size) * 0.65;
+  }
+  G.pops.push({ text, col: col || PAPER, size, x, y, w, vy: -30, life: 1.5, max: 1.5 });
 }
 function addPuddle(x, amt, col) {
   for (const p of G.puddles) if (Math.abs(p.x - x) < p.r + 12) { p.r = Math.min(110, Math.sqrt(p.r * p.r + amt * 40)); return; }
@@ -982,7 +999,8 @@ function stepSlosh(dt) {
 function updateDrop(dt) {
   const b = G.bag, m = G.mug, h = G.hand;
   h.pz += ((b.state === 'held' ? 1 : 0) - h.pz) * (1 - Math.exp(-dt * 25));
-  const A = Math.min(m.W / 2 + 110, WW / 2 - 70), sp = 1.7 * m.swing;
+  // The swing speeds up and slows down, so the timing changes from pass to pass.
+  const A = Math.min(m.W / 2 + 110, WW / 2 - 70), sp = 2.05 * m.swing * (1 + 0.3 * Math.sin(G.t * 1.3 + b.seed));
   h.ph += dt * sp;
   h.x = A * Math.sin(h.ph);
   const hvx = A * sp * Math.cos(h.ph);
@@ -1058,13 +1076,19 @@ function splashCounter(dv, wx) {
 function updatePour(dt) {
   const K = G.kettle, m = G.mug;
   if (K.aim == null) K.aim = GE.cx + m.W * 0.25;
+  // A full kettle is heavy: the spout trails your finger, the stream wanders a
+  // little, and the flow builds the longer you hold, so stopping on the line takes care.
+  if (K.x == null) K.x = K.aim;
+  K.x += (K.aim - K.x) * (1 - Math.exp(-dt * 3.5));
+  K.hold = K.holding ? (K.hold || 0) + dt : 0;
   K.p = K.holding ? Math.min(1, K.p + dt * 1.6) : Math.max(0, K.p - dt * 3.5);
+  K.sx = K.x + Math.sin(G.t * 5.3) * 9 * K.p;
   sfx.pour(K.p);
   if (K.p > 0.04) {
-    const xr = K.aim - GE.cx, ax = Math.abs(xr), q = K.p * m.D * 0.3 * dt;
+    const xr = K.sx - GE.cx, ax = Math.abs(xr), q = K.p * m.D * 0.3 * dt * (1 + Math.min(0.7, K.hold * 0.3)) * (1 + 0.25 * Math.sin(G.t * 11));
     if (ax < m.W / 2 - 3) addWater(q, xr);
-    else if (ax < m.W / 2 + m.wall) { addWater(q * 0.5, Math.sign(xr) * (m.W / 2 - 6)); splashCounter(q * 0.5, K.aim + Math.sign(xr) * (m.wall + 10)); }
-    else splashCounter(q, K.aim);
+    else if (ax < m.W / 2 + m.wall) { addWater(q * 0.5, Math.sign(xr) * (m.W / 2 - 6)); splashCounter(q * 0.5, K.sx + Math.sign(xr) * (m.wall + 10)); }
+    else splashCounter(q, K.sx);
   }
   $('btnDone').disabled = G.L < m.D * 0.2;
 }
@@ -1095,7 +1119,7 @@ function checkFinger() {
   if (b.state === 'mug' && distToBag(F.x, F.h) <= rf) {
     const under = F.h < hs + 2;
     if (tf < 0.15 || (exposure() >= GRAB_EXPOSE && !under)) { grab(); return true; }
-    if (!under && G.t - F.slipT > 0.6) { F.slipT = G.t; pop(pick(['Too slippery!', 'Not enough corner!', 'It sank!']), PAPER, 28); b.vy -= 120; }
+    if (!under && G.t - F.slipT > 0.6) { F.slipT = G.t; pop(pick(['Too slippery!', 'Not enough edge!', 'It sank!']), PAPER, 28); b.vy -= 120; }
   }
   const sub = hs - (F.h - rf * 0.6);
   if (sub > 0) {
@@ -1686,7 +1710,7 @@ function drawKettle() {
   const K = G.kettle, th = -K.p * 0.6;
   const tl = { x: -131 * KETTLE_SCALE, y: -25 * KETTLE_SCALE };
   const tr = { x: tl.x * Math.cos(th) - tl.y * Math.sin(th), y: tl.x * Math.sin(th) + tl.y * Math.cos(th) };
-  const aim = K.aim ?? GE.cx;
+  const aim = K.sx ?? K.aim ?? GE.cx;
   const bx = aim - tr.x, by = GE.rimY - 205 - K.leave * 1400;
   if (G.phase === 'pour' && K.p > 0.04) {
     const xr = aim - GE.cx, m = G.mug, sx = aim, sy = by + tr.y;
@@ -1942,7 +1966,7 @@ function goMugs() {
   showScreen('scrMugs');
 }
 function goHome() {
-  G = demoState(); GE = geo(); setPhaseUI(); TILT.g0 = null; setTagline();
+  G = demoState(); GE = geo(); setPhaseUI(); TILT.g0 = null; setTagline(); setQuick();
   refreshBests();
   showScreen('scrTitle');
 }
@@ -1965,7 +1989,7 @@ function setTagline() {
 }
 // If nobody presses Put the kettle on for a while, or someone reaches for the
 // bag on the title screen, the button starts to pulse.
-let nudgeAt = 0, grabPopT = 0;
+let nudgeAt = 0, grabPopT = -1e9;
 function armNudge() {
   let played = true;
   try { played = localStorage.getItem('ijumh-mug') != null; } catch (e) {}
@@ -1974,6 +1998,31 @@ function titleTouched(onBag) {
   const now = performance.now();
   nudgeAt = Math.min(nudgeAt, now + (onBag ? 0 : 4000));
   if (onBag && now - grabPopT > 2500) { grabPopT = now; pop(pick(['Put the kettle on first!', 'Not yet! Start a brew.', 'Ooh, hot. Start a brew first.']), PAPER, 30, GE.cx, GE.rimY - 120); }
+}
+// Returning players get a shortcut: the last mug and bag if it's not yet a 100,
+// else the first open combination that isn't, else the last one again.
+function quickPick() {
+  let mug = null, bag = null;
+  try { mug = localStorage.getItem('ijumh-mug'); bag = localStorage.getItem('ijumh-bag'); } catch (e) {}
+  if (!MUGS.some(m => m.id === mug) || !BAGS[bag]) return null;
+  const bests = readBests(), best = (m, b) => bests[bestKey(m, b)];
+  const pick = (m, b) => {
+    const r = best(m, b);
+    return { mug: m, bag: b, why: m === mug && b === bag ? (r && r.score === 100 ? 'Same as last time' : `Beat your ${r ? r.score : 0}`) : r ? `Beat your ${r.score}` : 'Not tried yet' };
+  };
+  if (!best(mug, bag) || best(mug, bag).score < 100) return pick(mug, bag);
+  for (const m of MUGS) for (const b of Object.keys(BAGS)) {
+    if (isOpen('mug', m.id, bests) && isOpen('bag', b, bests) && (!best(m.id, b) || best(m.id, b).score < 100)) return pick(m.id, b);
+  }
+  return pick(mug, bag);
+}
+let quick = null;
+function setQuick() {
+  quick = quickPick();
+  $('btnQuick').hidden = !quick;
+  if (!quick) return;
+  $('quickWhy').textContent = quick.why;
+  $('quickWhat').textContent = `${MUGS.find(m => m.id === quick.mug).name}, ${BAGS[quick.bag].name.toLowerCase()} bag`;
 }
 function checkNudge() { if (onTitle() && performance.now() > nudgeAt) $('btnStart').classList.add('nudge'); }
 function goBags(m) {
@@ -1993,9 +2042,9 @@ function pickBag(id) {
   startGame(chosenMug);
 }
 const BAG_BLURB = {
-  pyramid: 'Floats point-up, so there’s nearly always a corner to pinch.',
-  square: 'Floats flat. Tip it with a slosh or a swirl to get a corner up.',
-  round: 'No corners at all. Pinch the rim where it breaks the surface.',
+  pyramid: 'Floats point-up, so there’s nearly always an edge to pinch.',
+  square: 'Floats flat. Tip it with a slosh or a swirl to get an edge up.',
+  round: 'No points to grip. Pinch the edge where it breaks the surface.',
 };
 function buildBagCards() {
   const grid = $('bagGrid');
@@ -2183,11 +2232,11 @@ function showResults() {
 
 function nextTip(kind, grade, part, pen, total) {
   if (kind === 'spoon') return 'Use your hands. The spoon scores nothing.';
-  if (kind === 'fail') return 'Keep your fingertip out of the tea. Pinch only a corner that’s sticking out.';
+  if (kind === 'fail') return 'Keep your fingertip out of the tea. Pinch only an edge that’s sticking out.';
   const lost = [
     [45 - part.brew, grade.k === 'dish' || grade.k === 'weak' ? 'Wait until the steep bar reaches the green zone before you grab.' : 'Grab it sooner, while the steep bar is still in the green zone.'],
     [15 - part.fill, 'Fill the mug up to the dotted line before tapping “That’ll do”.'],
-    [30 - part.fingers, 'Keep your fingertip out of the tea. Pinch only a corner that’s sticking out.'],
+    [30 - part.fingers, 'Keep your fingertip out of the tea. Pinch only an edge that’s sticking out.'],
     [pen.spills, 'Gentler sloshes. Tea over the rim costs points.'],
     [pen.misses, 'Drop the bag when it’s right over the mug.'],
     [pen.milk, 'Leave the milk until the bag’s out.'],
@@ -2264,7 +2313,7 @@ const TOUCH_GRIP = [120, 20];
 function capture(e) { try { cv.setPointerCapture(e.pointerId); } catch (err) {} }
 function dropBag() {
   const b = G.bag;
-  if (b.state === 'held' && G.hand.up < 5) { b.state = 'falling'; b.vx *= 0.5; b.w = rand(-2, 2) - b.vx * 0.004; $('hint').hidden = true; }
+  if (b.state === 'held' && G.hand.up < 5) { b.state = 'falling'; b.vx *= 0.65; b.w = rand(-2, 2) - b.vx * 0.004; $('hint').hidden = true; }
 }
 cv.addEventListener('pointerdown', e => {
   audioInit();
@@ -2446,6 +2495,14 @@ $('recTable').addEventListener('click', e => {
   chosenMug = MUGS.find(m => m.id === cell.dataset.mug);
   startGame(chosenMug);
 });
+$('btnQuick').addEventListener('click', () => {
+  if (!quick) return;
+  audioInit();
+  bagShape = quick.bag;
+  try { localStorage.setItem('ijumh-bag', bagShape); } catch (e) {}
+  chosenMug = MUGS.find(m => m.id === quick.mug);
+  startGame(chosenMug);
+});
 $('btnRecBack').addEventListener('click', () => { $('scrRecords').hidden = true; $(recFrom).hidden = false; });
 $('btnCopy').addEventListener('click', () => {
   const fallback = () => { const box = $('copyBox'); box.value = lastShare; box.hidden = false; box.focus(); box.select(); $('btnCopy').textContent = 'Select and copy the text below'; };
@@ -2521,7 +2578,7 @@ $('btnReset').addEventListener('click', () => {
   // game is the first-time one. Sound, music, vibration and tilt stay as set.
   try { ['ijumh-best', 'ijumh-mug', 'ijumh-bag'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
   bagShape = 'square'; chosenMug = MUGS[0]; setTheme('kitchen');
-  refreshBests();
+  refreshBests(); setQuick(); setTagline();
   showRecords(recFrom);
   $('resetNote').textContent = 'All records cleared. Your next game starts from scratch.'; $('resetNote').hidden = false;
 });
@@ -2545,7 +2602,7 @@ setTheme(themeId);
 refreshBests();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => document.querySelectorAll('.mugcard canvas').forEach((c, i) => drawPreview(c, MUGS[i])));
 G = demoState(); GE = geo();
-armNudge(); setTagline();
+armNudge(); setTagline(); setQuick();
 
 let last = performance.now();
 function frame(now) {

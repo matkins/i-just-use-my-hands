@@ -175,7 +175,7 @@ body {
 /* The title screen lets touches through to the mug; only its buttons take them. */
 #scrTitle { pointer-events: none; overflow: hidden; }
 #scrTitle button { pointer-events: auto; }
-.titlefoot { margin: auto auto 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.titlefoot { margin: auto auto 0; padding-bottom: clamp(8px, 4vh, 40px); display: flex; flex-direction: column; align-items: center; gap: 12px; }
 /* It sits on the worktop, so it's dark to stand out whatever the theme. */
 #btnStart { background: var(--ink); color: var(--mustard); box-shadow: 0 5px 0 rgba(0,0,0,.45); }
 /* Nudges a first-timer who hasn't spotted the way in. */
@@ -379,6 +379,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
   <div class="titleblock">
     <p class="kicker">A game of thermal courage</p>
     <h1><span>I just use</span><span>my hands</span></h1>
+    <p class="lede" id="tagline"></p>
     <p class="starcount" id="starCount" hidden></p>
   </div>
   <div class="titlefoot">
@@ -820,7 +821,7 @@ function geo() {
   if (onTitle()) {
     const tb = document.querySelector('#scrTitle .titleblock').getBoundingClientRect(), ft = document.querySelector('#scrTitle .titlefoot').getBoundingClientRect();
     if (tb.height && ft.height) {
-      const lo = tb.bottom / S + m.D + m.base + 24, hi = ft.top / S - 14;
+      const lo = tb.bottom / S + m.D + m.base + 24, hi = ft.top / S - 40;
       counterY = lo <= hi ? clamp(counterY, lo, hi) : (lo + hi) / 2;
     }
   }
@@ -1941,9 +1942,26 @@ function goMugs() {
   showScreen('scrMugs');
 }
 function goHome() {
-  G = demoState(); GE = geo(); setPhaseUI(); TILT.g0 = null;
+  G = demoState(); GE = geo(); setPhaseUI(); TILT.g0 = null; setTagline();
   refreshBests();
   showScreen('scrTitle');
+}
+// A line under the title: a first-timer gets the one rule; after that it's
+// whatever suits the time of day.
+const TAGLINES = [
+  [5, ['Morning brew. Mind your fingers.', 'First cuppa of the day. Make it count.', 'Eyes not open yet? Kettle is.']],
+  [9, ['Elevenses. Time for a brew.', 'Mid-morning cuppa, anyone?', 'One before the next meeting.']],
+  [12, ['Lunchtime cuppa.', 'A brew with your butty.', 'Dinner time. Kettle on.']],
+  [14, ['Afternoon slump? Put the kettle on.', 'Half three. Brew time.', 'A brew to see you through.']],
+  [17, ['Teatime. The proper kind.', 'Evening brew. You’ve earned it.', 'Home time. Kettle on.']],
+  [21, ['One last brew before bed?', 'Late one? Go easy on the bag.', 'Night-time cuppa.']],
+];
+function setTagline() {
+  let played = true;
+  try { played = localStorage.getItem('ijumh-mug') != null; } catch (e) {}
+  const h = new Date().getHours();
+  const set = h < 5 ? ['Can’t sleep? Brew.', 'A brew at this hour? Go on then.', 'Middle of the night. Still a brew.'] : TAGLINES.filter(t => h >= t[0]).pop()[1];
+  $('tagline').textContent = played ? pick(set) : 'Resist the spoon.';
 }
 // If nobody presses Put the kettle on for a while, or someone reaches for the
 // bag on the title screen, the button starts to pulse.
@@ -2527,7 +2545,7 @@ setTheme(themeId);
 refreshBests();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => document.querySelectorAll('.mugcard canvas').forEach((c, i) => drawPreview(c, MUGS[i])));
 G = demoState(); GE = geo();
-armNudge();
+armNudge(); setTagline();
 
 let last = performance.now();
 function frame(now) {

@@ -443,6 +443,7 @@ h2 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: clam
       <li><b>Swirl</b><span>Draw circles level with the mug to spin the bag. A tilted bag pokes an edge up.</span></li>
       <li><b>Bob</b><span>Tap the mug or beside it to knock it. The bag bobs up for a moment.</span></li>
       <li><b>Tilt</b><span>On a phone, tilt it left and right to slide the mug and slosh the tea.</span></li>
+      <li><b>Keys</b><span>On a computer: ← → (or A and D) slosh, Q and E swirl, Space knocks. Space also drops the bag and, held, pours, with ← → to aim and Enter for “That’ll do”. Grab with the mouse.</span></li>
       <li><b>Grab</b><span>Press anywhere above the mug and drag down. The hand follows just up and to the left of your finger, so you can see what it’s doing. Pinch an edge that’s clearly out of the tea. Touch the tea and you’ll flinch and burn.</span></li>
       <li><b>Brew</b><span>The green zone on the steep bar is a perfect cuppa. Wait long enough and the tea goes cool enough to touch (if you’ve got all afternoon), but by then it’s stewed.</span></li>
     </ul>
@@ -1225,6 +1226,8 @@ function finish(kind) {
 function update(dt) {
   G.t += dt;
   const m = G.mug, b = G.bag;
+  if (KEYS.spin && playable()) { spin(KEYS.spin * dt * 9); noteSlosh(); }
+  if (G.phase === 'pour' && (KEYS.left || KEYS.right)) G.kettle.aim = clamp((G.kettle.aim ?? GE.cx) + ((KEYS.right ? 1 : 0) - (KEYS.left ? 1 : 0)) * dt * 320, 40, WW - 40);
 
   const oxTarget = G.drag || !playable() ? G.oxT : clamp(G.oxT + TILT.off, -80, 80);
   if (Math.abs(TILT.off) > 20) noteSlosh();
@@ -1806,7 +1809,7 @@ function drawGuides() {
     const ly = GE.rimY + (GE.counterY - GE.rimY) * 0.3;
     const tilt = TILT.on && TILT.seen;
     const narrow = side * S < 130;
-    const lh = guideLabel(narrow ? (tilt ? ['Swipe or', 'tilt to slosh', 'Circle to', 'swirl', 'Tap to', 'knock'] : ['Swipe to', 'slosh', 'Circle to', 'swirl', 'Tap to', 'knock'])
+    const lh = guideLabel(KEYBOARD ? (narrow ? ['← → to', 'slosh', 'Q E to', 'swirl', 'Space to', 'knock'] : ['← → to slosh', 'Q E to swirl', 'Space to knock']) : narrow ? (tilt ? ['Swipe or', 'tilt to slosh', 'Circle to', 'swirl', 'Tap to', 'knock'] : ['Swipe to', 'slosh', 'Circle to', 'swirl', 'Tap to', 'knock'])
       : tilt ? ['Swipe or tilt', 'to slosh', 'Circle to swirl', 'Tap to knock'] : ['Swipe to slosh', 'Circle to swirl', 'Tap to knock'], sx, ly, low, side - 8);
     // The ghost touch swipes side to side, then draws circles.
     const k = G.t % 4, r = Math.min(30, side / 2 - 26), gy = ly + lh / 2 + 34 / Math.max(S, 0.5);
@@ -1891,9 +1894,11 @@ function hud() {
   setText('vPain', painWord(G.pain));
 }
 
+// A mouse and keyboard rather than a touchscreen: name the keys in the hints.
+const KEYBOARD = matchMedia('(hover: hover) and (pointer: fine)').matches;
 const HINTS = {
-  drop: 'Tap to drop the tea bag in.',
-  pour: 'Hold to pour, drag to aim. Pour beside the bag, not on it. Fill to the dotted line, then tap “That’ll do”.',
+  drop: KEYBOARD ? 'Click or press Space to drop the tea bag in.' : 'Tap to drop the tea bag in.',
+  pour: KEYBOARD ? 'Hold the mouse or Space to pour; drag or use ← → to aim. Pour beside the bag, not on it. Fill to the dotted line, then press Enter for “That’ll do”.' : 'Hold to pour, drag to aim. Pour beside the bag, not on it. Fill to the dotted line, then tap “That’ll do”.',
   steep: 'Let it brew. Get the bag out when the steep bar reaches the green zone.',
 };
 // While brewing, call out each change in strength, so it's clear when to go in.
@@ -2391,16 +2396,37 @@ cv.addEventListener('pointerup', release);
 cv.addEventListener('pointercancel', release);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
+// Keyboard play for computers: arrows (or A and D) slosh, Q and E swirl, Space
+// or the down arrow knocks. Space also drops the bag and, held, pours, with the
+// arrows aiming the kettle; Enter is That'll do.
+const KEYS = { left: false, right: false, spin: 0 };
+const keyDir = k => ({ ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' })[k];
+const keySpin = k => ({ q: -1, Q: -1, e: 1, E: 1 })[k] || 0;
+function syncKeySlosh() { if (playable() && !G.drag) G.oxT = (KEYS.right ? 60 : 0) - (KEYS.left ? 60 : 0); }
 addEventListener('keydown', e => {
-  if (!G || e.repeat) return;
-  if (e.key === 'ArrowLeft') G.oxT = -60;
-  else if (e.key === 'ArrowRight') G.oxT = 60;
-  else if (e.key === ' ' && document.activeElement === document.body) {
-    if (G.phase === 'drop') { audioInit(); dropBag(); e.preventDefault(); }
-    else if (playable()) { tapMug(); e.preventDefault(); }
-  }
+  if (!G || e.ctrlKey || e.metaKey || e.altKey) return;
+  // Space and Enter belong to a focused button that's still on screen; otherwise to the game.
+  const ae = document.activeElement, inGame = !ae || ae === document.body || ae === cv || !ae.offsetParent;
+  const dir = keyDir(e.key);
+  if (dir) { KEYS[dir] = true; if (!e.repeat) { syncKeySlosh(); if (playable()) noteSlosh(); } if (e.key.startsWith('Arrow')) e.preventDefault(); return; }
+  if (keySpin(e.key)) { KEYS.spin = keySpin(e.key); return; }
+  if (e.repeat || !inGame) return;
+  if (e.key === ' ' || e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+    audioInit();
+    if (G.phase === 'drop') dropBag();
+    else if (G.phase === 'pour' && e.key === ' ') { G.kettle.holding = true; G.kettle.pid = 'key'; }
+    else if (playable()) { tapMug(); noteSlosh(); }
+    e.preventDefault();
+  } else if (e.key === 'Enter' && G.phase === 'pour' && !$('btnDone').disabled) { $('btnDone').click(); e.preventDefault(); }
 });
-addEventListener('keyup', e => { if (G && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) G.oxT = 0; });
+addEventListener('keyup', e => {
+  if (!G) return;
+  const dir = keyDir(e.key);
+  if (dir) { KEYS[dir] = false; syncKeySlosh(); }
+  if (keySpin(e.key) === KEYS.spin) KEYS.spin = 0;
+  if (e.key === ' ' && G.kettle.pid === 'key') { G.kettle.holding = false; G.kettle.pid = null; }
+});
+addEventListener('blur', () => { KEYS.left = KEYS.right = false; KEYS.spin = 0; if (G) { if (playable()) G.oxT = 0; if (G.kettle.pid === 'key') { G.kettle.holding = false; G.kettle.pid = null; } } });
 
 // A first-time player goes straight into a game with the Classic and the easy
 // pyramid bag; after that, Put the kettle on leads to the mug and bag choice.
